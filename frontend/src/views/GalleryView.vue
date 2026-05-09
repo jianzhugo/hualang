@@ -1,5 +1,5 @@
 <template>
-  <main class="max-w-7xl mx-auto px-4 md:px-6 py-8">
+  <main class="page-container py-8">
     <div class="gallery-toolbar">
       <div class="gallery-toolbar-left">
         <SortDropdown v-model="sortOrder" />

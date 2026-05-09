@@ -262,14 +262,21 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
 
       if (existingObj) {
         const text = await existingObj.text()
-        metadata = JSON.parse(text)
+        try {
+          metadata = JSON.parse(text)
+          if (!metadata.artworks || !Array.isArray(metadata.artworks)) {
+            metadata = { artworks: [] }
+          }
+        } catch {
+          metadata = { artworks: [] }
+        }
         etag = existingObj.httpEtag
       } else {
         metadata = { artworks: [] }
         etag = ''
       }
 
-      const registeredKeys = new Set((metadata.artworks || []).map((a) => a.key))
+      const registeredKeys = new Set(metadata.artworks.map((a) => a.key))
       const listed = await env.GALLERY_BUCKET.list()
       const unregistered = listed.objects.filter(
         (obj) => obj.key.endsWith('.webp') && !registeredKeys.has(obj.key)

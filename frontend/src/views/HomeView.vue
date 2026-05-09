@@ -1,8 +1,8 @@
 <template>
   <main>
     <!-- Hero 区域 -->
-    <section class="bg-surface-soft py-16 md:py-section">
-      <div class="max-w-7xl mx-auto px-4 md:px-6">
+    <section class="hero-fullwidth">
+      <div class="hero-fullwidth-inner">
         <div class="flex flex-col items-center text-center">
           <h1
             class="text-[36px] md:text-[56px] lg:text-[70px] font-semibold leading-tight tracking-tight text-ink mb-6"
@@ -22,7 +22,7 @@
 
     <!-- 精选画作特征行 -->
     <section class="py-16 md:py-section">
-      <div class="max-w-7xl mx-auto px-4 md:px-6">
+      <div class="page-container">
         <div class="flex flex-col lg:flex-row items-center gap-8 lg:gap-16 mb-16 lg:mb-section">
           <div class="flex-1">
             <div class="feature-card-soft">
@@ -76,26 +76,6 @@
             </div>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- 引导上传 CTA 条 -->
-    <section class="hero-cta-strip">
-      <div class="max-w-7xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div>
-          <h2
-            class="text-heading-xl font-bold tracking-tight mb-2"
-            style="letter-spacing: -1.2px;"
-          >
-            开始记录美好瞬间
-          </h2>
-          <p class="text-on-dark-mute text-body-md">
-            上传孩子的第一幅画作，创建属于家庭的艺术画廊
-          </p>
-        </div>
-        <router-link to="/upload" class="btn-primary shrink-0">
-          上传画作
-        </router-link>
       </div>
     </section>
   </main>

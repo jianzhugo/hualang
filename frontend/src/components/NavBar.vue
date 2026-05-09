@@ -1,6 +1,6 @@
 <template>
   <nav class="sticky top-0 z-50 h-16 bg-canvas border-b border-hairline">
-    <div class="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+    <div class="page-container h-full flex items-center justify-between">
       <button class="md:hidden p-2" @click="mobileOpen = !mobileOpen" :aria-label="mobileOpen ? '关闭菜单' : '打开菜单'">
         <Menu v-if="!mobileOpen" :size="24" />
         <X v-else :size="24" />

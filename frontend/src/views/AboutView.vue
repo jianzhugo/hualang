@@ -1,5 +1,5 @@
 <template>
-  <main class="max-w-4xl mx-auto px-4 md:px-6 py-8">
+  <main class="page-container py-8">
     <h1
       class="text-heading-xl font-bold tracking-tight text-ink mb-2"
       style="letter-spacing: -1.2px;"

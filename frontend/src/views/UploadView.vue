@@ -1,5 +1,5 @@
 <template>
-  <main class="max-w-3xl mx-auto px-4 md:px-6 py-8">
+  <main class="page-container py-8">
     <h1
       class="text-heading-xl font-bold tracking-tight text-ink mb-2"
       style="letter-spacing: -1.2px;"
@@ -9,7 +9,7 @@
     <p class="text-body-md text-mute mb-8">将孩子的画作安全上传到画廊</p>
 
     <!-- 密码验证 -->
-    <div v-if="!uploadStore.isAuthenticated" class="max-w-full mx-auto">
+    <div v-if="!uploadStore.isAuthenticated" class="form-container">
       <div class="feature-card-soft">
         <h2 class="text-heading-lg font-semibold text-ink mb-4">请输入上传密码</h2>
         <div class="space-y-4">
@@ -29,7 +29,7 @@
     </div>
 
     <!-- 上传界面 -->
-    <div v-else>
+    <div v-else class="form-container">
       <!-- 上传者选择 -->
       <div class="mb-6">
         <label class="block text-body-sm font-semibold text-ink mb-2">上传者 *</label>
@@ -301,14 +301,4 @@ const formatStatus = (status: string): string => {
   return map[status] || status
 }
 
-const resetSession = () => {
-  passwordInput.value = ''
-  uploadStore.isAuthenticated = false
-  uploadStore.selectedUploader = ''
-  uploadStore.selectedAuthor = ''
-  uploadStore.createdDate = ''
-  uploadStore.selectedTags = []
-  uploadStore.uploadQueue = []
-  sessionStorage.removeItem('gallery_auth')
-}
 </script>
