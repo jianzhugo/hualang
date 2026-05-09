@@ -1,0 +1,10 @@
+name = "gallery-api"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[[r2_buckets]]
+binding = "GALLERY_BUCKET"
+bucket_name = "kids-art-gallery"
+
+[vars]
+CORS_ORIGIN = "http://localhost:5173"

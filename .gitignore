@@ -1,0 +1,38 @@
+# Dependencies
+**/node_modules/
+
+# Build outputs
+**/dist/
+**/dist-ssr/
+
+# Wrangler local state
+workers/.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.sw?
+
+# Local env files
+.env.local
+.env.*.local
+
+# Trae docs
+.trae/
+
+# Design docs (not needed in repo)
+DESIGN.md
+DESIGN2.md
+KIDS_ART_GALLERY.md
+KIDS_ART_GALLERY_DEV.md
