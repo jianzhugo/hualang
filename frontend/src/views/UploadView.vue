@@ -39,8 +39,54 @@
           <option value="妈妈">妈妈</option>
           <option value="爷爷">爷爷</option>
           <option value="奶奶">奶奶</option>
-          <option value="自定义">自定义</option>
         </select>
+      </div>
+
+      <!-- 作者输入/选择 -->
+      <div class="mb-6">
+        <label class="block text-body-sm font-semibold text-ink mb-2">作品作者 *</label>
+        <select v-model="authorMode" class="text-input mb-2">
+          <option value="select">从已有作者中选择</option>
+          <option value="custom">填写新作者</option>
+        </select>
+        <select v-if="authorMode === 'select'" v-model="uploadStore.selectedAuthor" class="text-input" required>
+          <option value="" disabled>请选择作者</option>
+          <option v-for="author in existingAuthors" :key="author" :value="author">{{ author }}</option>
+        </select>
+        <input v-else v-model="customAuthor" type="text" placeholder="请输入作者姓名" class="text-input" required />
+      </div>
+
+      <!-- 作品创作日期 -->
+      <div class="mb-6">
+        <label class="block text-body-sm font-semibold text-ink mb-2">作品创作日期</label>
+        <input v-model="uploadStore.createdDate" type="date" class="text-input" />
+      </div>
+
+      <!-- 标签输入 -->
+      <div class="mb-6">
+        <label class="block text-body-sm font-semibold text-ink mb-2">标签</label>
+        <div class="flex gap-2 mb-2">
+          <input
+            v-model="tagInput"
+            type="text"
+            placeholder="输入标签后按回车"
+            class="text-input flex-1"
+            @keyup.enter="addTag"
+          />
+          <button type="button" class="btn-secondary" @click="addTag">添加</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span
+            v-for="(tag, index) in uploadStore.selectedTags"
+            :key="index"
+            class="inline-flex items-center gap-1 px-2 py-1 bg-secondary text-body-sm rounded"
+          >
+            {{ tag }}
+            <button type="button" class="text-mute hover:text-ink" @click="removeTag(index)">
+              ×
+            </button>
+          </span>
+        </div>
       </div>
 
       <!-- 拖拽上传区 -->
@@ -105,6 +151,7 @@
         <button
           v-if="!uploadStore.isUploading && hasPendingItems"
           class="btn-primary w-full mt-4"
+          :disabled="!uploadStore.selectedUploader || !uploadStore.selectedAuthor"
           @click="startUpload"
         >
           开始上传
@@ -115,24 +162,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
+import { useGalleryStore } from '../stores/gallery'
 import { compressImage } from '../composables/useImageCompress'
 
 const uploadStore = useUploadStore()
+const galleryStore = useGalleryStore()
 const passwordInput = ref('')
 const passwordError = ref('')
 const verifying = ref(false)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const tagInput = ref('')
+const authorMode = ref('select')
+const customAuthor = ref('')
+
+const existingAuthors = computed(() => {
+  const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
+  return authors
+})
 
 const hasPendingItems = computed(() =>
   uploadStore.uploadQueue.some((item) => item.status === 'pending' || item.status === 'error')
 )
 
+watch(customAuthor, (val) => {
+  uploadStore.selectedAuthor = val
+})
+
 onMounted(() => {
   uploadStore.checkAuth()
+  galleryStore.fetchGallery()
 })
 
 const handleVerify = async () => {
@@ -172,7 +234,22 @@ const addFiles = (files: File[]) => {
   uploadStore.addFiles(files, uploadStore.selectedUploader)
 }
 
+const addTag = () => {
+  const tag = tagInput.value.trim()
+  if (tag && !uploadStore.selectedTags.includes(tag)) {
+    uploadStore.selectedTags.push(tag)
+  }
+  tagInput.value = ''
+}
+
+const removeTag = (index: number) => {
+  uploadStore.selectedTags.splice(index, 1)
+}
+
 const startUpload = async () => {
+  if (!uploadStore.selectedUploader || !uploadStore.selectedAuthor) {
+    return
+  }
   for (const item of uploadStore.uploadQueue) {
     if (item.status === 'pending' || item.status === 'error') {
       uploadStore.updateItem(item.id, { status: 'compressing', progress: 0 })

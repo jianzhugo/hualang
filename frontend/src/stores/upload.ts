@@ -16,6 +16,9 @@ export const useUploadStore = defineStore('upload', () => {
   const password = ref('')
   const isAuthenticated = ref(false)
   const selectedUploader = ref('')
+  const selectedAuthor = ref('')
+  const createdDate = ref('')
+  const selectedTags = ref<string[]>([])
   const uploadQueue = ref<UploadItem[]>([])
   const isUploading = ref(false)
 
@@ -82,8 +85,11 @@ export const useUploadStore = defineStore('upload', () => {
       await registerArtwork({
         key: tokenResult.key,
         uploader: selectedUploader.value,
+        author: selectedAuthor.value,
         title: item.file.name.replace(/\.[^.]+$/, ''),
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        createdDate: createdDate.value || undefined,
+        tags: selectedTags.value
       })
 
       updateItem(item.id, { status: 'done', progress: 100 })
@@ -140,6 +146,9 @@ export const useUploadStore = defineStore('upload', () => {
     password,
     isAuthenticated,
     selectedUploader,
+    selectedAuthor,
+    createdDate,
+    selectedTags,
     uploadQueue,
     isUploading,
     checkAuth,

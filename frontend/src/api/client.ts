@@ -17,8 +17,11 @@ interface TokenResponse {
 interface Artwork {
   key: string
   uploader: string
+  author: string
   title: string
   date: string
+  createdDate?: string
+  tags?: string[]
   url?: string
 }
 
@@ -48,8 +51,11 @@ export const uploadFile = async (
 export const registerArtwork = async (payload: {
   key: string
   uploader: string
+  author: string
   title?: string
   date?: string
+  createdDate?: string
+  tags?: string[]
 }): Promise<void> => {
   await http.post('/api/register', payload)
 }

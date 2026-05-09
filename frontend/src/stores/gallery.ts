@@ -5,8 +5,11 @@ import { fetchGalleryList } from '../api/client'
 export interface ArtworkItem {
   key: string
   uploader: string
+  author: string
   title: string
   date: string
+  createdDate?: string
+  tags?: string[]
   url?: string
 }
 
