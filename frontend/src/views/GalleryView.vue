@@ -52,6 +52,9 @@
           :selectedUploaders="selectedUploaders"
           :selectedTags="selectedTags"
         />
+        <button class="btn-sync" :disabled="syncing" @click="handleSync">
+          {{ syncing ? '同步中...' : '同步R2图片' }}
+        </button>
       </div>
     </div>
 
@@ -127,6 +130,7 @@ const lightboxIndex = ref(0)
 const editDialogVisible = ref(false)
 const editingArtwork = ref<ArtworkItem | null>(null)
 const syncMessage = ref('')
+const syncing = ref(false)
 
 const authors = computed(() => {
   return [...new Set(galleryStore.artworks.map((a) => a.author).filter(Boolean))]
@@ -246,6 +250,24 @@ const handleSave = async (data: { key: string; title: string; author: string; cr
     createdDate: data.createdDate || undefined,
     tags: data.tags
   })
+}
+
+const handleSync = async () => {
+  syncing.value = true
+  syncMessage.value = ''
+  try {
+    const count = await galleryStore.syncArtworks()
+    if (count > 0) {
+      syncMessage.value = `已同步 ${count} 张图片`
+    } else {
+      syncMessage.value = '没有需要同步的图片'
+    }
+  } catch {
+    syncMessage.value = '同步失败，请重试'
+  } finally {
+    syncing.value = false
+    setTimeout(() => { syncMessage.value = '' }, 3000)
+  }
 }
 
 onMounted(() => {

@@ -242,6 +242,9 @@ const addFiles = (files: File[]) => {
   if (!uploadStore.selectedUploader) {
     uploadStore.selectedUploader = '爸爸'
   }
+  if (!uploadStore.selectedAuthor && existingAuthors.value.length > 0) {
+    uploadStore.selectedAuthor = existingAuthors.value[0]
+  }
   uploadStore.addFiles(files, uploadStore.selectedUploader)
 }
 
@@ -259,6 +262,7 @@ const removeTag = (index: number) => {
 
 const startUpload = async () => {
   if (!uploadStore.selectedUploader || !uploadStore.selectedAuthor) {
+    alert('请填写上传者和作品作者')
     return
   }
   for (const item of uploadStore.uploadQueue) {
@@ -277,6 +281,7 @@ const startUpload = async () => {
     }
   }
   await uploadStore.processQueue()
+  await galleryStore.fetchGallery()
 }
 
 const retryItem = (id: string) => {
@@ -294,5 +299,16 @@ const formatStatus = (status: string): string => {
     error: '上传失败'
   }
   return map[status] || status
+}
+
+const resetSession = () => {
+  passwordInput.value = ''
+  uploadStore.isAuthenticated = false
+  uploadStore.selectedUploader = ''
+  uploadStore.selectedAuthor = ''
+  uploadStore.createdDate = ''
+  uploadStore.selectedTags = []
+  uploadStore.uploadQueue = []
+  sessionStorage.removeItem('gallery_auth')
 }
 </script>

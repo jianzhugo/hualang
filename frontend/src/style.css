@@ -315,6 +315,32 @@
 
   .gallery-toolbar-right {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-sync {
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+  }
+
+  .btn-sync:hover:not(:disabled) {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+  }
+
+  .btn-sync:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .gallery-chip-divider {

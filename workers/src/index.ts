@@ -85,7 +85,7 @@ async function handleToken(request: Request, env: Env, origin: string): Promise<
       url: `${urlForRequest(request)}/api/upload/${key}`,
       key
     }, env, 200, origin)
-  } catch (e) {
+  } catch {
     return errorResponse(500, 'Failed to generate upload token', env, origin)
   }
 }
@@ -102,14 +102,19 @@ async function handleUpload(request: Request, env: Env, origin: string, key: str
       httpMetadata: { contentType: 'image/webp' }
     })
     return jsonResponse({ success: true }, env, 200, origin)
-  } catch (e) {
+  } catch {
     return errorResponse(500, 'Upload failed', env, origin)
   }
 }
 
 async function handleRegister(request: Request, env: Env, origin: string): Promise<Response> {
   try {
-    const body: { key: string; uploader: string; author: string; title?: string; date?: string; createdDate?: string; tags?: string[] } = await request.json()
+    const body = await request.json()
+
+    if (!body?.key || !body?.uploader || !body?.author) {
+      return errorResponse(400, 'Missing required fields: key, uploader, author', env, origin)
+    }
+
     const maxRetries = 3
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -119,7 +124,14 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
 
       if (existingObj) {
         const text = await existingObj.text()
-        metadata = JSON.parse(text)
+        try {
+          metadata = JSON.parse(text)
+          if (!metadata.artworks || !Array.isArray(metadata.artworks)) {
+            metadata = { artworks: [] }
+          }
+        } catch {
+          metadata = { artworks: [] }
+        }
         etag = existingObj.httpEtag
       } else {
         metadata = { artworks: [] }
@@ -133,7 +145,12 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
         title: body.title || body.key.replace('.webp', ''),
         date: body.date || new Date().toISOString().split('T')[0],
         ...(body.createdDate && { createdDate: body.createdDate }),
-        tags: body.tags || []
+        tags: Array.isArray(body.tags) ? body.tags : []
+      }
+
+      const exists = metadata.artworks.some((a) => a.key === body.key)
+      if (exists) {
+        return errorResponse(409, 'Artwork already registered', env, origin)
       }
 
       metadata.artworks.push(newArtwork)
@@ -160,8 +177,10 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
     }
 
     return errorResponse(409, 'Metadata conflict, please try again', env, origin)
-  } catch (e) {
-    return errorResponse(500, 'Failed to register artwork', env, origin)
+  } catch (e: unknown) {
+    const msg = (e as Error)?.message || 'Unknown error'
+    console.error('Register error:', msg)
+    return errorResponse(500, `Failed to register artwork: ${msg}`, env, origin)
   }
 }
 
@@ -182,7 +201,15 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
       }
 
       const text = await existingObj.text()
-      const metadata: MetadataFile = JSON.parse(text)
+      let metadata: MetadataFile
+      try {
+        metadata = JSON.parse(text)
+        if (!metadata.artworks || !Array.isArray(metadata.artworks)) {
+          return errorResponse(404, 'Artwork not found', env, origin)
+        }
+      } catch {
+        return errorResponse(404, 'Artwork not found', env, origin)
+      }
       const etag = existingObj.httpEtag
 
       const idx = metadata.artworks.findIndex((a) => a.key === body.key)
@@ -214,7 +241,7 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
     }
 
     return errorResponse(409, 'Metadata conflict, please try again', env, origin)
-  } catch (e) {
+  } catch {
     return errorResponse(500, 'Failed to update artwork', env, origin)
   }
 }
@@ -242,7 +269,7 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
         etag = ''
       }
 
-      const registeredKeys = new Set(metadata.artworks.map((a) => a.key))
+      const registeredKeys = new Set((metadata.artworks || []).map((a) => a.key))
       const listed = await env.GALLERY_BUCKET.list()
       const unregistered = listed.objects.filter(
         (obj) => obj.key.endsWith('.webp') && !registeredKeys.has(obj.key)
@@ -282,7 +309,7 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
     }
 
     return errorResponse(409, 'Metadata conflict, please try again', env, origin)
-  } catch (e) {
+  } catch {
     return errorResponse(500, 'Failed to sync', env, origin)
   }
 }
@@ -296,12 +323,20 @@ async function handleList(request: Request, env: Env, origin: string): Promise<R
     }
 
     const text = await obj.text()
-    const metadata: MetadataFile = JSON.parse(text)
+    let metadata: MetadataFile
+    try {
+      metadata = JSON.parse(text)
+      if (!metadata.artworks || !Array.isArray(metadata.artworks)) {
+        return jsonResponse({ artworks: [] }, env, 200, origin)
+      }
+    } catch {
+      return jsonResponse({ artworks: [] }, env, 200, origin)
+    }
     
     metadata.artworks.sort((a, b) => b.date.localeCompare(a.date))
 
     return jsonResponse({ artworks: metadata.artworks }, env, 200, origin)
-  } catch (e) {
+  } catch {
     return errorResponse(500, 'Read failed', env, origin)
   }
 }
