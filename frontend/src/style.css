@@ -218,7 +218,7 @@
   .gallery-main {
     position: relative;
     z-index: 10;
-    margin-top: -33.33vh;
+    margin-top: -50vh;
     padding-top: 0;
     padding-bottom: var(--spacing-section);
   }

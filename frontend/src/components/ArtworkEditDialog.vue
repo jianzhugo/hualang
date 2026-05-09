@@ -8,7 +8,7 @@
       <div class="absolute inset-0 bg-black/50"></div>
 
       <div
-        class="relative z-10 w-full max-w-md mx-4 bg-white rounded-lg p-6"
+        class="relative z-10 w-full max-w-xl min-w-[320px] mx-4 bg-white rounded-lg p-6"
         @click.stop
       >
         <h2 class="text-heading-lg font-semibold text-ink mb-4">编辑作品信息</h2>
@@ -36,7 +36,7 @@
                 v-model="tagInput"
                 type="text"
                 placeholder="输入标签后按回车"
-                class="text-input flex-1"
+                class="flex-1 min-w-0 h-[44px] px-[15px] text-body-md border border-ash rounded-md bg-canvas text-ink outline-none transition-colors duration-150 focus:border-ink"
                 @keyup.enter="addTag"
               />
               <button type="button" class="btn-secondary" @click="addTag">添加</button>

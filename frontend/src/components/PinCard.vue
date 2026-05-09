@@ -24,13 +24,40 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
         </button>
         <button
-          v-if="!confirmingDelete"
+          v-if="!confirmingDelete && !needsPassword"
           class="bg-black/50 hover:bg-red-600 rounded-full p-1.5 transition-colors"
-          @click.stop="confirmingDelete = true"
+          @click.stop="startDelete"
           aria-label="删除"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
         </button>
+      </div>
+      <div
+        v-if="needsPassword"
+        class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-3 p-4"
+        @click.stop
+      >
+        <p class="text-white text-sm text-center">请输入密码</p>
+        <input
+          v-model="passwordInput"
+          type="password"
+          class="bg-white/20 text-white text-sm rounded-full px-3 py-1.5 outline-none w-36 text-center placeholder-white/50"
+          placeholder="密码"
+        />
+        <div class="flex gap-2">
+          <button
+            class="bg-green-600 hover:bg-green-700 text-white text-xs px-4 py-1.5 rounded-full transition-colors"
+            @click.stop="submitPassword"
+          >
+            确认
+          </button>
+          <button
+            class="bg-white/20 hover:bg-white/30 text-white text-xs px-4 py-1.5 rounded-full transition-colors"
+            @click.stop="needsPassword = false; passwordInput = ''"
+          >
+            取消
+          </button>
+        </div>
       </div>
       <div
         v-if="confirmingDelete"
@@ -77,6 +104,26 @@ defineEmits<{
 }>()
 
 const confirmingDelete = ref(false)
+const needsPassword = ref(false)
+const passwordInput = ref('')
+
+const startDelete = () => {
+  const stored = sessionStorage.getItem('gallery_auth')
+  if (stored) {
+    confirmingDelete.value = true
+  } else {
+    needsPassword.value = true
+  }
+}
+
+const submitPassword = () => {
+  const pwd = passwordInput.value.trim()
+  if (!pwd) return
+  sessionStorage.setItem('gallery_auth', pwd)
+  needsPassword.value = false
+  passwordInput.value = ''
+  confirmingDelete.value = true
+}
 
 const handleError = (e: Event) => {
   const img = e.target as HTMLImageElement
