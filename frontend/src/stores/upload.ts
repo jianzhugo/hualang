@@ -78,7 +78,7 @@ export const useUploadStore = defineStore('upload', () => {
       
       updateItem(item.id, { progress: 30 })
 
-      await uploadFile(tokenResult.url, tokenResult.headers, blob)
+      await uploadFile(tokenResult.url, blob)
       
       updateItem(item.id, { status: 'registering', progress: 80 })
 

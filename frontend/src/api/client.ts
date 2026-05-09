@@ -10,7 +10,6 @@ const http = axios.create({
 
 interface TokenResponse {
   url: string
-  headers: Record<string, string>
   key: string
 }
 
@@ -35,15 +34,11 @@ export const getToken = async (password: string): Promise<TokenResponse> => {
 }
 
 export const uploadFile = async (
-  presignedUrl: string,
-  headers: Record<string, string>,
+  uploadUrl: string,
   blob: Blob
 ): Promise<void> => {
-  await axios.put(presignedUrl, blob, {
-    headers: {
-      ...headers,
-      'Content-Type': 'image/webp'
-    },
+  await axios.put(uploadUrl, blob, {
+    headers: { 'Content-Type': 'image/webp' },
     timeout: 60000
   })
 }
@@ -63,4 +58,23 @@ export const registerArtwork = async (payload: {
 export const fetchGalleryList = async (): Promise<Artwork[]> => {
   const { data } = await http.get<ListResponse>('/api/list')
   return data.artworks
+}
+
+export const updateArtwork = async (payload: {
+  key: string
+  author?: string
+  title?: string
+  createdDate?: string
+  tags?: string[]
+}, password: string): Promise<void> => {
+  await http.put('/api/artwork', payload, {
+    headers: { Authorization: `Bearer ${password}` }
+  })
+}
+
+export const syncR2 = async (password: string): Promise<{ synced: number }> => {
+  const { data } = await http.post('/api/sync', null, {
+    headers: { Authorization: `Bearer ${password}` }
+  })
+  return data
 }

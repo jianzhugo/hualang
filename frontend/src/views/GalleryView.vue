@@ -26,12 +26,19 @@
 
     <EmptyState v-else-if="filteredArtworks.length === 0" />
 
-    <MasonryGrid v-else :artworks="filteredArtworks" @select="openLightbox" />
+    <MasonryGrid v-else :artworks="filteredArtworks" @select="openLightbox" @edit="openEdit" />
 
     <Lightbox
       v-model:visible="lightboxVisible"
       v-model:currentIndex="lightboxIndex"
       :artworks="filteredArtworks"
+      @edit="openEdit"
+    />
+
+    <ArtworkEditDialog
+      v-model:visible="editDialogVisible"
+      :artwork="editingArtwork"
+      @save="handleSave"
     />
   </main>
 </template>
@@ -39,11 +46,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
+import type { ArtworkItem } from '../stores/gallery'
 import FilterChips from '../components/FilterChips.vue'
 import MasonryGrid from '../components/MasonryGrid.vue'
 import EmptyState from '../components/EmptyState.vue'
 import SkeletonGrid from '../components/SkeletonGrid.vue'
 import Lightbox from '../components/Lightbox.vue'
+import ArtworkEditDialog from '../components/ArtworkEditDialog.vue'
 
 const galleryStore = useGalleryStore()
 const selectedAuthor = ref('all')
@@ -51,6 +60,8 @@ const selectedCreatedDate = ref('all')
 const selectedTag = ref('all')
 const lightboxVisible = ref(false)
 const lightboxIndex = ref(0)
+const editDialogVisible = ref(false)
+const editingArtwork = ref<ArtworkItem | null>(null)
 
 const authorChips = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
@@ -125,6 +136,20 @@ const openLightbox = (artwork: (typeof galleryStore.artworks)[0]) => {
     lightboxIndex.value = index
     lightboxVisible.value = true
   }
+}
+
+const openEdit = (artwork: (typeof galleryStore.artworks)[0]) => {
+  editingArtwork.value = artwork
+  editDialogVisible.value = true
+}
+
+const handleSave = async (data: { key: string; title: string; author: string; createdDate: string; tags: string[] }) => {
+  await galleryStore.updateArtworkData(data.key, {
+    title: data.title,
+    author: data.author,
+    createdDate: data.createdDate || undefined,
+    tags: data.tags
+  })
 }
 
 onMounted(() => {

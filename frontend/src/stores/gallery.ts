@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchGalleryList } from '../api/client'
+import { fetchGalleryList, updateArtwork, syncR2 } from '../api/client'
 
 export interface ArtworkItem {
   key: string
@@ -35,5 +35,21 @@ export const useGalleryStore = defineStore('gallery', () => {
     artworks.value.unshift(artwork)
   }
 
-  return { artworks, loading, error, fetchGallery, addArtwork }
+  const updateArtworkData = async (key: string, updates: { author?: string; title?: string; createdDate?: string; tags?: string[] }) => {
+    const password = sessionStorage.getItem('gallery_auth') || ''
+    await updateArtwork({ key, ...updates }, password)
+    const idx = artworks.value.findIndex((a) => a.key === key)
+    if (idx !== -1) {
+      artworks.value[idx] = { ...artworks.value[idx], ...updates }
+    }
+  }
+
+  const syncArtworks = async (): Promise<number> => {
+    const password = sessionStorage.getItem('gallery_auth') || ''
+    const result = await syncR2(password)
+    await fetchGallery()
+    return result.synced
+  }
+
+  return { artworks, loading, error, fetchGallery, addArtwork, updateArtworkData, syncArtworks }
 })

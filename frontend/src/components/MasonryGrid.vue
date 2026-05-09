@@ -5,6 +5,7 @@
         :artwork="artwork"
         :aspect-ratio="getAspectRatio(artwork.key)"
         @click="$emit('select', artwork)"
+        @edit="$emit('edit', artwork)"
       />
     </div>
   </div>
@@ -22,6 +23,7 @@ defineProps<Props>()
 
 defineEmits<{
   select: [artwork: ArtworkItem]
+  edit: [artwork: ArtworkItem]
 }>()
 
 const getAspectRatio = (key: string): string => {

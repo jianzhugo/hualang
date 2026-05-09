@@ -17,6 +17,15 @@
         <X :size="20" />
       </button>
 
+      <!-- 编辑按钮 -->
+      <button
+        class="btn-icon-circular absolute top-4 right-16 z-10 bg-white/90 hover:bg-white"
+        @click.stop="$emit('edit', currentArtwork)"
+        aria-label="编辑"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+      </button>
+
       <!-- 左箭头 -->
       <button
         v-if="hasPrev"
@@ -56,7 +65,7 @@
         <div class="mt-4 text-center text-white">
           <p class="text-lg font-semibold">{{ currentArtwork?.title }}</p>
           <p class="text-sm text-white/70">
-            {{ currentArtwork?.uploader }} · {{ currentArtwork?.date }}
+            {{ currentArtwork?.author }} · {{ currentArtwork?.createdDate || currentArtwork?.date }}
           </p>
         </div>
       </div>
@@ -80,6 +89,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   'update:visible': [value: boolean]
   'update:currentIndex': [value: number]
+  edit: [artwork: ArtworkItem]
 }>()
 
 const imageRef = ref<HTMLImageElement>()
