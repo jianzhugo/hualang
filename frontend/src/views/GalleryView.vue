@@ -1,6 +1,15 @@
 <template>
-  <main class="page-container py-8">
-    <div class="gallery-toolbar">
+  <div class="gallery-page">
+    <section class="gallery-hero">
+      <div class="gallery-hero-bg" />
+      <div class="gallery-hero-overlay" />
+      <div class="gallery-hero-content">
+        <h1 class="gallery-hero-title">未来艺术家</h1>
+      </div>
+    </section>
+
+    <main class="gallery-main page-container">
+      <div class="gallery-toolbar">
       <div class="gallery-toolbar-left">
         <SortDropdown v-model="sortOrder" />
       </div>
@@ -95,7 +104,8 @@
       :artwork="editingArtwork"
       @save="handleSave"
     />
-  </main>
+    </main>
+  </div>
 </template>
 
 <script setup lang="ts">

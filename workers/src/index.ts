@@ -107,6 +107,26 @@ async function handleUpload(request: Request, env: Env, origin: string, key: str
   }
 }
 
+async function handleImage(request: Request, env: Env, origin: string, key: string): Promise<Response> {
+  try {
+    const obj = await env.GALLERY_BUCKET.get(key)
+    if (!obj) {
+      return errorResponse(404, 'Image not found', env, origin)
+    }
+    const body = await obj.arrayBuffer()
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'Content-Type': obj.httpMetadata?.contentType || 'image/webp',
+        'Cache-Control': 'public, max-age=31536000',
+        ...corsHeaders(env, origin)
+      }
+    })
+  } catch {
+    return errorResponse(500, 'Failed to read image', env, origin)
+  }
+}
+
 async function handleRegister(request: Request, env: Env, origin: string): Promise<Response> {
   try {
     const body = await request.json()
@@ -132,7 +152,7 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
         } catch {
           metadata = { artworks: [] }
         }
-        etag = existingObj.httpEtag
+        etag = existingObj.httpEtag.replace(/^"|"$/g, '')
       } else {
         metadata = { artworks: [] }
         etag = ''
@@ -210,7 +230,7 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
       } catch {
         return errorResponse(404, 'Artwork not found', env, origin)
       }
-      const etag = existingObj.httpEtag
+      const etag = existingObj.httpEtag.replace(/^"|"$/g, '')
 
       const idx = metadata.artworks.findIndex((a) => a.key === body.key)
       if (idx === -1) {
@@ -270,7 +290,7 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
         } catch {
           metadata = { artworks: [] }
         }
-        etag = existingObj.httpEtag
+        etag = existingObj.httpEtag.replace(/^"|"$/g, '')
       } else {
         metadata = { artworks: [] }
         etag = ''
@@ -342,7 +362,12 @@ async function handleList(request: Request, env: Env, origin: string): Promise<R
     
     metadata.artworks.sort((a, b) => b.date.localeCompare(a.date))
 
-    return jsonResponse({ artworks: metadata.artworks }, env, 200, origin)
+    const artworksWithUrl = metadata.artworks.map((a) => ({
+      ...a,
+      url: `${urlForRequest(request)}/api/image/${a.key}`
+    }))
+
+    return jsonResponse({ artworks: artworksWithUrl }, env, 200, origin)
   } catch {
     return errorResponse(500, 'Read failed', env, origin)
   }
@@ -385,6 +410,11 @@ export default {
     if (method === 'PUT' && pathname.startsWith('/api/upload/')) {
       const key = pathname.replace('/api/upload/', '')
       return handleUpload(request, env, origin, key)
+    }
+
+    if (method === 'GET' && pathname.startsWith('/api/image/')) {
+      const key = pathname.replace('/api/image/', '')
+      return handleImage(request, env, origin, key)
     }
 
     return errorResponse(404, 'Not found', env, origin)
