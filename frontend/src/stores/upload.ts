@@ -50,6 +50,7 @@ export const useUploadStore = defineStore('upload', () => {
     const newItems: UploadItem[] = files.map((file) => ({
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       file,
+      displayName: file.name.replace(/\.[^.]+$/, ''),
       status: 'pending',
       progress: 0,
       retryCount: 0
@@ -88,7 +89,7 @@ export const useUploadStore = defineStore('upload', () => {
         key: tokenResult.key,
         uploader: selectedUploader.value,
         author: selectedAuthor.value,
-        title: item.file.name.replace(/\.[^.]+$/, ''),
+        title: item.displayName,
         date: new Date().toISOString().split('T')[0],
         createdDate: createdDate.value || undefined,
         tags: selectedTags.value

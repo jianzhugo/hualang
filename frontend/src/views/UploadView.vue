@@ -131,8 +131,14 @@
           class="feature-card-soft flex items-center gap-4"
         >
           <div class="flex-1 min-w-0">
-            <p class="text-body-sm font-medium text-ink truncate">{{ item.file.name }}</p>
-            <p class="text-caption-sm text-mute">
+            <input
+              v-model="item.displayName"
+              type="text"
+              class="text-input text-body-sm font-medium"
+              :title="item.file.name"
+              @click.stop
+            />
+            <p class="text-caption-sm text-mute mt-1">
               {{ formatStatus(item.status) }}
               <span v-if="item.errorMessage" class="text-error"> - {{ item.errorMessage }}</span>
             </p>
