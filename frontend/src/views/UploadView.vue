@@ -89,6 +89,17 @@
         </div>
       </div>
 
+      <!-- 压缩选项 -->
+      <div class="mb-6">
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" v-model="uploadStore.compressImages" class="w-4 h-4 rounded" />
+          <span class="text-body-sm font-semibold text-ink">压缩图片</span>
+        </label>
+        <p class="text-caption-sm text-mute mt-1 ml-6">
+          开启后按文件大小自动调整质量转为WebP格式，关闭则仅转换格式保持原分辨率
+        </p>
+      </div>
+
       <!-- 拖拽上传区 -->
       <div
         class="border-2 border-dashed border-hairline rounded-lg p-8 text-center transition-colors cursor-pointer mb-6"
@@ -254,7 +265,7 @@ const startUpload = async () => {
     if (item.status === 'pending' || item.status === 'error') {
       uploadStore.updateItem(item.id, { status: 'compressing', progress: 0 })
       try {
-        const compressed = await compressImage(item.file)
+        const compressed = await compressImage(item.file, { enableCompression: uploadStore.compressImages })
         uploadStore.updateItem(item.id, {
           compressedBlob: compressed,
           status: 'pending',
@@ -276,7 +287,7 @@ const retryItem = (id: string) => {
 const formatStatus = (status: string): string => {
   const map: Record<string, string> = {
     pending: '等待中',
-    compressing: '压缩中',
+    compressing: uploadStore.compressImages ? '压缩中' : '转换格式中',
     uploading: '上传中',
     registering: '登记中',
     done: '已完成',

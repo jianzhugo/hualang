@@ -19,6 +19,7 @@ export const useUploadStore = defineStore('upload', () => {
   const selectedAuthor = ref('')
   const createdDate = ref('')
   const selectedTags = ref<string[]>([])
+  const compressImages = ref(true)
   const uploadQueue = ref<UploadItem[]>([])
   const isUploading = ref(false)
 
@@ -149,6 +150,7 @@ export const useUploadStore = defineStore('upload', () => {
     selectedAuthor,
     createdDate,
     selectedTags,
+    compressImages,
     uploadQueue,
     isUploading,
     checkAuth,
