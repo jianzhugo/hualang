@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchGalleryList, updateArtwork, syncR2 } from '../api/client'
+import { fetchGalleryList, updateArtwork, syncR2, deleteArtwork } from '../api/client'
 
 export interface ArtworkItem {
   key: string
@@ -44,6 +44,12 @@ export const useGalleryStore = defineStore('gallery', () => {
     }
   }
 
+  const removeArtwork = async (key: string) => {
+    const password = sessionStorage.getItem('gallery_auth') || ''
+    await deleteArtwork(key, password)
+    artworks.value = artworks.value.filter((a) => a.key !== key)
+  }
+
   const syncArtworks = async (): Promise<number> => {
     const password = sessionStorage.getItem('gallery_auth') || ''
     const result = await syncR2(password)
@@ -51,5 +57,5 @@ export const useGalleryStore = defineStore('gallery', () => {
     return result.synced
   }
 
-  return { artworks, loading, error, fetchGallery, addArtwork, updateArtworkData, syncArtworks }
+  return { artworks, loading, error, fetchGallery, addArtwork, updateArtworkData, removeArtwork, syncArtworks }
 })

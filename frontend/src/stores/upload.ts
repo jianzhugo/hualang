@@ -5,6 +5,7 @@ import { getToken, uploadFile, registerArtwork } from '../api/client'
 interface UploadItem {
   id: string
   file: File
+  displayName: string
   compressedBlob?: Blob
   status: 'pending' | 'compressing' | 'uploading' | 'registering' | 'done' | 'error'
   progress: number

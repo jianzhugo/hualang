@@ -78,3 +78,10 @@ export const syncR2 = async (password: string): Promise<{ synced: number }> => {
   })
   return data
 }
+
+export const deleteArtwork = async (key: string, password: string): Promise<void> => {
+  await http.delete('/api/artwork', {
+    headers: { Authorization: `Bearer ${password}` },
+    data: { key }
+  })
+}

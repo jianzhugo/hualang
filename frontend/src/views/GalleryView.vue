@@ -90,7 +90,7 @@
 
     <EmptyState v-else-if="sortedFilteredArtworks.length === 0" />
 
-    <MasonryGrid v-else :artworks="sortedFilteredArtworks" @select="openLightbox" @edit="openEdit" />
+    <MasonryGrid v-else :artworks="sortedFilteredArtworks" @select="openLightbox" @edit="openEdit" @delete="handleDelete" />
 
     <Lightbox
       v-model:visible="lightboxVisible"
@@ -260,6 +260,17 @@ const handleSave = async (data: { key: string; title: string; author: string; cr
     createdDate: data.createdDate || undefined,
     tags: data.tags
   })
+}
+
+const handleDelete = async (artwork: ArtworkItem) => {
+  try {
+    await galleryStore.removeArtwork(artwork.key)
+    syncMessage.value = `已删除「${artwork.title}」`
+  } catch {
+    syncMessage.value = '删除失败，请重试'
+  } finally {
+    setTimeout(() => { syncMessage.value = '' }, 3000)
+  }
 }
 
 const handleSync = async () => {

@@ -341,6 +341,72 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
   }
 }
 
+async function handleDelete(request: Request, env: Env, origin: string): Promise<Response> {
+  const token = extractAuthHeader(request)
+  if (!token || !verifyPassword(env, token)) {
+    return errorResponse(403, 'Invalid password', env, origin)
+  }
+
+  try {
+    const body: { key: string } = await request.json()
+    if (!body.key) {
+      return errorResponse(400, 'Missing key', env, origin)
+    }
+
+    await env.GALLERY_BUCKET.delete(body.key)
+
+    const maxRetries = 3
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      const existingObj = await env.GALLERY_BUCKET.get('metadata.json')
+      if (!existingObj) {
+        return jsonResponse({ success: true }, env, 200, origin)
+      }
+
+      const text = await existingObj.text()
+      let metadata: MetadataFile
+      try {
+        metadata = JSON.parse(text)
+        if (!metadata.artworks || !Array.isArray(metadata.artworks)) {
+          return jsonResponse({ success: true }, env, 200, origin)
+        }
+      } catch {
+        return jsonResponse({ success: true }, env, 200, origin)
+      }
+      const etag = existingObj.httpEtag.replace(/^"|"$/g, '')
+
+      const idx = metadata.artworks.findIndex((a) => a.key === body.key)
+      if (idx === -1) {
+        return jsonResponse({ success: true }, env, 200, origin)
+      }
+
+      metadata.artworks.splice(idx, 1)
+
+      try {
+        await env.GALLERY_BUCKET.put('metadata.json', JSON.stringify(metadata), {
+          onlyIf: { etagMatches: etag }
+        })
+        return jsonResponse({ success: true }, env, 200, origin)
+      } catch (putError: unknown) {
+        const err = putError as { code?: string; message?: string }
+        if (attempt < maxRetries - 1 && (err.code === 'ConditionalCheckFailed' || err.message?.includes('etag'))) {
+          await new Promise(r => setTimeout(r, Math.random() * 1000))
+          continue
+        }
+        if (attempt === maxRetries - 1) {
+          return errorResponse(409, 'Metadata conflict, please try again', env, origin)
+        }
+        throw putError
+      }
+    }
+
+    return errorResponse(409, 'Metadata conflict, please try again', env, origin)
+  } catch (e: unknown) {
+    const msg = (e as Error)?.message || 'Unknown error'
+    console.error('Delete error:', msg)
+    return errorResponse(500, `Failed to delete artwork: ${msg}`, env, origin)
+  }
+}
+
 async function handleList(request: Request, env: Env, origin: string): Promise<Response> {
   try {
     const obj = await env.GALLERY_BUCKET.get('metadata.json')
@@ -360,9 +426,13 @@ async function handleList(request: Request, env: Env, origin: string): Promise<R
       return jsonResponse({ artworks: [] }, env, 200, origin)
     }
     
-    metadata.artworks.sort((a, b) => b.date.localeCompare(a.date))
+    const listed = await env.GALLERY_BUCKET.list()
+    const existingKeys = new Set(listed.objects.filter(o => o.key.endsWith('.webp')).map(o => o.key))
+    const validArtworks = metadata.artworks.filter(a => existingKeys.has(a.key))
 
-    const artworksWithUrl = metadata.artworks.map((a) => ({
+    validArtworks.sort((a, b) => b.date.localeCompare(a.date))
+
+    const artworksWithUrl = validArtworks.map((a) => ({
       ...a,
       url: `${urlForRequest(request)}/api/image/${a.key}`
     }))
@@ -401,6 +471,10 @@ export default {
 
     if (method === 'PUT' && pathname === '/api/artwork') {
       return handleUpdate(request, env, origin)
+    }
+
+    if (method === 'DELETE' && pathname === '/api/artwork') {
+      return handleDelete(request, env, origin)
     }
 
     if (method === 'POST' && pathname === '/api/sync') {
