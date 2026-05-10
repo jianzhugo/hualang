@@ -62,6 +62,7 @@ export const fetchGalleryList = async (): Promise<Artwork[]> => {
 
 export const updateArtwork = async (payload: {
   key: string
+  uploader?: string
   author?: string
   title?: string
   createdDate?: string

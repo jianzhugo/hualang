@@ -2,7 +2,7 @@
   <div class="filter-trigger" :class="{ 'filter-trigger-active': isOpen }">
     <button class="filter-trigger-btn" @click="toggle">
       <Funnel class="filter-trigger-icon" />
-      <span>Filters</span>
+      <span>筛选</span>
       <span v-if="activeFilterCount > 0" class="filter-trigger-badge">{{ activeFilterCount }}</span>
     </button>
   </div>

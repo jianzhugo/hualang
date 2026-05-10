@@ -35,7 +35,7 @@ export const useGalleryStore = defineStore('gallery', () => {
     artworks.value.unshift(artwork)
   }
 
-  const updateArtworkData = async (key: string, updates: { author?: string; title?: string; createdDate?: string; tags?: string[] }) => {
+  const updateArtworkData = async (key: string, updates: { uploader?: string; author?: string; title?: string; createdDate?: string; tags?: string[] }) => {
     const password = sessionStorage.getItem('gallery_auth') || ''
     await updateArtwork({ key, ...updates }, password)
     const idx = artworks.value.findIndex((a) => a.key === key)

@@ -211,7 +211,7 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
       return errorResponse(403, 'Invalid password', env, origin)
     }
 
-    const body: { key: string; author?: string; title?: string; createdDate?: string; tags?: string[] } = await request.json()
+    const body: { key: string; uploader?: string; author?: string; title?: string; createdDate?: string; tags?: string[] } = await request.json()
     const maxRetries = 3
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -237,6 +237,7 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
         return errorResponse(404, 'Artwork not found', env, origin)
       }
 
+      if (body.uploader !== undefined) metadata.artworks[idx].uploader = body.uploader
       if (body.author !== undefined) metadata.artworks[idx].author = body.author
       if (body.title !== undefined) metadata.artworks[idx].title = body.title
       if (body.createdDate !== undefined) metadata.artworks[idx].createdDate = body.createdDate

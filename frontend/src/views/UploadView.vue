@@ -33,32 +33,39 @@
       <!-- 上传者选择 -->
       <div class="mb-6">
         <label class="block text-body-sm font-semibold text-ink mb-2">上传者 *</label>
-        <select v-model="uploadStore.selectedUploader" class="text-input" required>
-          <option value="" disabled>请选择上传者</option>
-          <option value="爸爸">爸爸</option>
-          <option value="妈妈">妈妈</option>
-          <option value="爷爷">爷爷</option>
-          <option value="奶奶">奶奶</option>
-        </select>
+        <input
+          v-model="uploadStore.selectedUploader"
+          list="uploader-list"
+          type="text"
+          placeholder="选择或输入上传者"
+          class="text-input"
+        />
+        <datalist id="uploader-list">
+          <option value="爸爸" />
+          <option value="妈妈" />
+          <option value="爷爷" />
+          <option value="奶奶" />
+        </datalist>
       </div>
 
       <!-- 作者输入/选择 -->
       <div class="mb-6">
         <label class="block text-body-sm font-semibold text-ink mb-2">作品作者 *</label>
-        <select v-model="authorMode" class="text-input mb-2">
-          <option value="select">从已有作者中选择</option>
-          <option value="custom">填写新作者</option>
-        </select>
-        <select v-if="authorMode === 'select'" v-model="uploadStore.selectedAuthor" class="text-input" required>
-          <option value="" disabled>请选择作者</option>
-          <option v-for="author in existingAuthors" :key="author" :value="author">{{ author }}</option>
-        </select>
-        <input v-else v-model="customAuthor" type="text" placeholder="请输入作者姓名" class="text-input" required />
+        <input
+          v-model="uploadStore.selectedAuthor"
+          list="author-list"
+          type="text"
+          placeholder="选择或输入新作者"
+          class="text-input"
+        />
+        <datalist id="author-list">
+          <option v-for="author in existingAuthors" :key="author" :value="author" />
+        </datalist>
       </div>
 
       <!-- 作品创作日期 -->
       <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">作品创作日期</label>
+        <label class="block text-body-sm font-semibold text-ink mb-2">创作日期</label>
         <input v-model="uploadStore.createdDate" type="date" class="text-input" />
       </div>
 
@@ -74,6 +81,30 @@
             @keyup.enter="addTag"
           />
           <button type="button" class="btn-secondary" @click="addTag">添加</button>
+        </div>
+        <div v-if="existingTags.length > 0" class="mb-2">
+          <p class="text-caption-sm text-mute mb-1">已有标签（点击快速添加）：</p>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="tag in displayedExistingTags"
+              :key="tag"
+              type="button"
+              class="px-2 py-0.5 text-caption-sm rounded border border-hairline text-mute hover:text-ink hover:border-primary transition-colors"
+              :class="{ 'opacity-40': uploadStore.selectedTags.includes(tag) }"
+              :disabled="uploadStore.selectedTags.includes(tag)"
+              @click="addExistingTag(tag)"
+            >
+              {{ tag }}
+            </button>
+            <button
+              v-if="existingTags.length > maxVisibleTags"
+              type="button"
+              class="px-2 py-0.5 text-caption-sm text-primary hover:underline"
+              @click="tagsExpanded = !tagsExpanded"
+            >
+              {{ tagsExpanded ? '收起' : `展开 (${existingTags.length - maxVisibleTags}+)` }}
+            </button>
+          </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <span
@@ -91,12 +122,31 @@
 
       <!-- 压缩选项 -->
       <div class="mb-6">
-        <label class="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" v-model="uploadStore.compressImages" class="w-4 h-4 rounded" />
-          <span class="text-body-sm font-semibold text-ink">压缩图片</span>
-        </label>
-        <p class="text-caption-sm text-mute mt-1 ml-6">
-          开启后按文件大小自动调整质量转为WebP格式，关闭则仅转换格式保持原分辨率
+        <label class="block text-body-sm font-semibold text-ink mb-2">压缩图片</label>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="px-4 py-1.5 text-body-sm rounded border transition-colors"
+            :class="uploadStore.compressImages
+              ? 'bg-primary text-white border-primary'
+              : 'border-hairline text-mute hover:border-primary'"
+            @click="uploadStore.compressImages = true"
+          >
+            是
+          </button>
+          <button
+            type="button"
+            class="px-4 py-1.5 text-body-sm rounded border transition-colors"
+            :class="!uploadStore.compressImages
+              ? 'bg-primary text-white border-primary'
+              : 'border-hairline text-mute hover:border-primary'"
+            @click="uploadStore.compressImages = false"
+          >
+            否
+          </button>
+        </div>
+        <p class="text-caption-sm text-mute mt-1">
+          是：按文件大小自动调整质量转为WebP格式；否：仅转换格式保持原分辨率
         </p>
       </div>
 
@@ -179,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
@@ -193,8 +243,7 @@ const verifying = ref(false)
 const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const tagInput = ref('')
-const authorMode = ref('select')
-const customAuthor = ref('')
+const tagsExpanded = ref(false)
 
 const existingAuthors = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
@@ -205,8 +254,16 @@ const hasPendingItems = computed(() =>
   uploadStore.uploadQueue.some((item) => item.status === 'pending' || item.status === 'error')
 )
 
-watch(customAuthor, (val) => {
-  uploadStore.selectedAuthor = val
+const maxVisibleTags = 8
+
+const existingTags = computed(() => {
+  const allTags = galleryStore.artworks.flatMap((a) => a.tags || [])
+  return [...new Set(allTags)].sort()
+})
+
+const displayedExistingTags = computed(() => {
+  if (tagsExpanded.value) return existingTags.value
+  return existingTags.value.slice(0, maxVisibleTags)
 })
 
 onMounted(() => {
@@ -264,6 +321,12 @@ const addTag = () => {
 
 const removeTag = (index: number) => {
   uploadStore.selectedTags.splice(index, 1)
+}
+
+const addExistingTag = (tag: string) => {
+  if (!uploadStore.selectedTags.includes(tag)) {
+    uploadStore.selectedTags.push(tag)
+  }
 }
 
 const startUpload = async () => {

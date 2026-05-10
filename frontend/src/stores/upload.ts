@@ -6,6 +6,7 @@ interface UploadItem {
   id: string
   file: File
   displayName: string
+  uploader: string
   compressedBlob?: Blob
   status: 'pending' | 'compressing' | 'uploading' | 'registering' | 'done' | 'error'
   progress: number
@@ -51,6 +52,7 @@ export const useUploadStore = defineStore('upload', () => {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       file,
       displayName: file.name.replace(/\.[^.]+$/, ''),
+      uploader,
       status: 'pending',
       progress: 0,
       retryCount: 0
@@ -87,7 +89,7 @@ export const useUploadStore = defineStore('upload', () => {
 
       await registerArtwork({
         key: tokenResult.key,
-        uploader: selectedUploader.value,
+        uploader: item.uploader,
         author: selectedAuthor.value,
         title: item.displayName,
         date: new Date().toISOString().split('T')[0],

@@ -20,6 +20,11 @@
           </div>
 
           <div>
+            <label class="block text-body-sm font-semibold text-ink mb-2">上传者</label>
+            <input v-model="editForm.uploader" type="text" class="text-input" />
+          </div>
+
+          <div>
             <label class="block text-body-sm font-semibold text-ink mb-2">作品作者</label>
             <input v-model="editForm.author" type="text" class="text-input" />
           </div>
@@ -78,11 +83,12 @@ const props = defineProps<Props>()
 
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  save: [data: { key: string; title: string; author: string; createdDate: string; tags: string[] }]
+  save: [data: { key: string; title: string; uploader: string; author: string; createdDate: string; tags: string[] }]
 }>()
 
 const editForm = ref({
   title: '',
+  uploader: '',
   author: '',
   createdDate: '',
   tags: [] as string[]
@@ -96,6 +102,7 @@ watch(
     if (artwork) {
       editForm.value = {
         title: artwork.title,
+        uploader: artwork.uploader || '',
         author: artwork.author,
         createdDate: artwork.createdDate || '',
         tags: [...(artwork.tags || [])]
@@ -129,6 +136,7 @@ const save = () => {
   emit('save', {
     key: props.artwork.key,
     title: editForm.value.title,
+    uploader: editForm.value.uploader,
     author: editForm.value.author,
     createdDate: editForm.value.createdDate,
     tags: editForm.value.tags

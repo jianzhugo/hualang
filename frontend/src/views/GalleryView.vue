@@ -68,14 +68,18 @@
     </div>
 
     <FilterPanel
+      :key="filterOpen ? 1 : 0"
       :isOpen="filterOpen"
+      @close="filterOpen = false"
       v-model:uploadDateStart="uploadDateStart"
       v-model:uploadDateEnd="uploadDateEnd"
       v-model:createdDateStart="createdDateStart"
       v-model:createdDateEnd="createdDateEnd"
       v-model:selectedUploaders="selectedUploaders"
+      v-model:selectedAuthors="selectedAuthors"
       v-model:selectedTags="selectedTags"
       :uploaders="uploaders"
+      :authors="authors"
       :tags="allTags"
     />
 
@@ -253,9 +257,10 @@ const openEdit = (artwork: (typeof galleryStore.artworks)[0]) => {
   editDialogVisible.value = true
 }
 
-const handleSave = async (data: { key: string; title: string; author: string; createdDate: string; tags: string[] }) => {
+const handleSave = async (data: { key: string; title: string; uploader: string; author: string; createdDate: string; tags: string[] }) => {
   await galleryStore.updateArtworkData(data.key, {
     title: data.title,
+    uploader: data.uploader,
     author: data.author,
     createdDate: data.createdDate || undefined,
     tags: data.tags
