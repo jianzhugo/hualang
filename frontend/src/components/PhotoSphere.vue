@@ -20,19 +20,28 @@ const container = ref<HTMLDivElement>()
 const canvas = ref<HTMLCanvasElement>()
 const emit = defineEmits(['loaded'])
 
+const isMobile = () => window.innerWidth < 768
+
+interface TrackData {
+  meshes: THREE.Mesh[]
+  speed: number
+  trackWidth: number
+}
+
 let scene: THREE.Scene
-let camera: THREE.OrthographicCamera
+let camera: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
 let spriteGroup: THREE.Group
 let animationId: number
-let dragRotationSpeed = { x: 0, y: 0 }
+let dragVelocity = { x: 0, y: 0 }
 let isDragging = false
 let prevMouseX = 0
 let prevMouseY = 0
+let dragActive = false
 let textures: THREE.Texture[] = []
-let meshes: THREE.Mesh[] = []
-
-const isMobile = () => window.innerWidth < 768
+let tracks: TrackData[] = []
+let animTime = 0
+const tempVec = new THREE.Vector3()
 
 const init = () => {
   if (!container.value || !canvas.value) return
@@ -50,17 +59,9 @@ const init = () => {
 
   scene = new THREE.Scene()
 
-  const frustum = 14
   const aspect = width / height
-  camera = new THREE.OrthographicCamera(
-    -frustum * aspect,
-    frustum * aspect,
-    frustum,
-    -frustum,
-    0.1,
-    1000
-  )
-  camera.position.z = 20
+  camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 100)
+  camera.position.set(0, 0, 0)
 
   spriteGroup = new THREE.Group()
   scene.add(spriteGroup)
@@ -76,7 +77,7 @@ const seededRandom = (seed: number) => {
 const loadTextures = () => {
   if (!props.artworks.length) return
 
-  const maxCount = isMobile() ? 15 : 50
+  const maxCount = isMobile() ? 24 : 72
   const artworksToLoad = props.artworks.slice(0, maxCount)
 
   let loadedCount = 0
@@ -92,6 +93,7 @@ const loadTextures = () => {
     img.onload = () => {
       const texture = new THREE.Texture(img)
       texture.needsUpdate = true
+      texture.anisotropy = renderer.capabilities.getMaxAnisotropy()
       textures.push(texture)
       loadedCount++
       if (loadedCount >= total) {
@@ -111,109 +113,154 @@ const loadTextures = () => {
 }
 
 const createSprites = () => {
-  while (spriteGroup.children.length > 0) {
-    const child = spriteGroup.children[0]
-    spriteGroup.remove(child)
-    child.traverse((obj) => {
-      if (obj instanceof THREE.Mesh) {
-        obj.geometry.dispose()
-        if ((obj as THREE.Mesh).material instanceof THREE.Material) {
-          ((obj as THREE.Mesh).material as THREE.Material).dispose()
-        }
+  tracks.forEach((track) => {
+    track.meshes.forEach((mesh) => {
+      scene.remove(mesh)
+      mesh.geometry.dispose()
+      if (mesh.material instanceof THREE.Material) {
+        mesh.material.dispose()
       }
     })
-  }
-  meshes = []
+  })
+  tracks = []
 
   if (!textures.length) return
 
-  const count = Math.min(textures.length, isMobile() ? 15 : 50)
+  const count = Math.min(textures.length, isMobile() ? 24 : 72)
+  const trackCount = isMobile() ? 4 : 6
+  const itemsPerTrack = Math.ceil(count / trackCount)
 
-  const cols = Math.ceil(Math.sqrt(count * 2))
-  const rows = Math.ceil(count / cols)
+  const aspect = container.value?.clientWidth && container.value?.clientHeight
+    ? container.value.clientWidth / container.value.clientHeight
+    : 16 / 9
+  const fovRad = (camera.fov * Math.PI) / 180
+  const halfFovTan = Math.tan(fovRad / 2)
 
-  const tileW = 1.8
-  const tileH = 2.0
+  for (let t = 0; t < trackCount; t++) {
+    const trackMeshes: THREE.Mesh[] = []
+    const depthRatio = t / Math.max(trackCount - 1, 1)
 
-  const startX = -((cols - 1) * (tileW + 0.4)) / 2
-  const startY = ((rows - 1) * (tileH + 0.4)) / 2
+    const zDepth = -(3 + depthRatio * 19)
+    const dist = Math.abs(zDepth)
 
-  for (let i = 0; i < count; i++) {
-    if (i >= textures.length) return
+    const speed = 0.035 + (1 - depthRatio) * 0.040
 
-    const texture = textures[i]
-    texture.minFilter = THREE.LinearFilter
-    texture.magFilter = THREE.LinearFilter
+    const visibleH = 2 * halfFovTan * dist
+    const visibleW = visibleH * aspect
+    const trackWidth = visibleW * 2.4
+    const trackHeight = visibleH * 1.4
 
-    const img = texture.image as HTMLImageElement | undefined
-    const aspect = img ? img.width / img.height : 1
+    const cellW = trackWidth / itemsPerTrack
 
-    const col = i % cols
-    const row = Math.floor(i / cols)
+    for (let i = 0; i < itemsPerTrack; i++) {
+      const idx = (t * itemsPerTrack + i) % textures.length
+      if (idx >= textures.length) break
 
-    const seed = i * 137 + 42
+      const texture = textures[idx]
+      texture.minFilter = THREE.LinearFilter
+      texture.magFilter = THREE.LinearFilter
+      texture.generateMipmaps = false
 
-    const offsetX = (seededRandom(seed + 1) - 0.5) * 0.6
-    const offsetY = (seededRandom(seed + 2) - 0.5) * 0.4
+      const img = texture.image as HTMLImageElement | undefined
+      const imgAspect = img ? Math.max(Math.min(img.width / img.height, 1.8), 0.5) : 1
 
-    const x = startX + col * (tileW + 0.4) + offsetX
-    const y = startY - row * (tileH + 0.4) + offsetY
+      const worldSize = dist * 0.14
+      const sizeJitter = 0.7 + seededRandom(t * 97 + i * 31) * 0.6
+      const planeH = worldSize * sizeJitter
+      const planeW = planeH * imgAspect
 
-    const depthZ = (seededRandom(seed + 3) - 0.5) * 6
+      const geometry = new THREE.PlaneGeometry(planeW, planeH)
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.25 + (1 - depthRatio) * 0.55,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      })
+      const mesh = new THREE.Mesh(geometry, material)
 
-    const baseH = tileH * (0.85 + seededRandom(seed + 4) * 0.3)
-    const planeWidth = baseH * aspect
-    const planeHeight = baseH
+      const colOffset = (i - itemsPerTrack / 2 + 0.5) * cellW
+      const jitterX = (seededRandom(t * 13 + i * 67) - 0.5) * cellW * 0.4
+      const x = colOffset + jitterX
 
-    const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight)
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      opacity: 0.9,
-      side: THREE.DoubleSide
-    })
-    const mesh = new THREE.Mesh(geometry, material)
+      const jitterY = (seededRandom(t * 43 + i * 53 + 9) - 0.5) * trackHeight * 0.7
+      const y = jitterY
 
-    mesh.position.set(x, y, depthZ)
-    mesh.rotation.z = (seededRandom(seed + 5) - 0.5) * 0.08
+      const rotZ = (seededRandom(t * 31 + i * 41 + 17) - 0.5) * 0.3
+      const rotX = (seededRandom(t * 23 + i * 37 + 5) - 0.5) * 0.12
 
-    mesh.userData = {
-      baseY: y,
-      baseZ: depthZ,
-      phaseX: seededRandom(seed + 6) * Math.PI * 2,
-      phaseY: seededRandom(seed + 7) * Math.PI * 2,
-      speedX: 0.3 + seededRandom(seed + 8) * 0.3,
-      speedY: 0.2 + seededRandom(seed + 9) * 0.2,
-      ampX: 0.15 + seededRandom(seed + 10) * 0.1,
-      ampY: 0.1 + seededRandom(seed + 11) * 0.08
+      mesh.position.set(x, y, zDepth)
+      mesh.rotation.z = rotZ
+      mesh.rotation.x = rotX
+
+      mesh.userData = {
+        baseX: x,
+        baseY: y,
+        baseZ: zDepth,
+        rotZ,
+        rotX,
+        floatPhase: seededRandom(t * 59 + i * 73 + 11) * Math.PI * 2,
+        floatSpeed: 0.3 + seededRandom(t * 61 + i * 79 + 3) * 0.3,
+        floatAmp: 0.15 + seededRandom(t * 67 + i * 83 + 7) * 0.25
+      }
+
+      scene.add(mesh)
+      trackMeshes.push(mesh)
     }
 
-    spriteGroup.add(mesh)
-    meshes.push(mesh)
+    tracks.push({ meshes: trackMeshes, speed, trackWidth })
   }
 
   startAnimation()
 }
 
 const startAnimation = () => {
+  let lastTime = performance.now()
+
   const animate = () => {
     animationId = requestAnimationFrame(animate)
 
-    spriteGroup.rotation.y += 0.001 + dragRotationSpeed.x
-    spriteGroup.rotation.x += dragRotationSpeed.y
+    const now = performance.now()
+    const dt = Math.min((now - lastTime) / 1000, 0.05)
+    lastTime = now
 
-    dragRotationSpeed.x *= 0.95
-    dragRotationSpeed.y *= 0.95
+    animTime += dt
 
-    const time = Date.now() * 0.001
+    const dragInfluence = 1 + Math.abs(dragVelocity.y) * 4
 
-    meshes.forEach((mesh) => {
-      const d = mesh.userData
-      const floatY = Math.sin(time * d.speedY + d.phaseY) * d.ampY
-      const floatX = Math.cos(time * d.speedX + d.phaseX) * d.ampX
-      mesh.position.y = d.baseY + floatY
-      mesh.position.x = d.baseX + floatX
+    tracks.forEach((track) => {
+      const offset = animTime * track.speed * 12 * dragInfluence
+
+      track.meshes.forEach((mesh) => {
+        const d = mesh.userData
+        let newX = d.baseX - offset
+
+        const halfW = track.trackWidth / 2
+        if (newX < d.baseX - halfW) {
+          newX += track.trackWidth
+        }
+
+        const floatY = Math.sin(animTime * d.floatSpeed + d.floatPhase) * d.floatAmp
+
+        tempVec.set(newX, d.baseY + floatY, d.baseZ)
+        tempVec.applyEuler(spriteGroup.rotation)
+        mesh.position.copy(tempVec)
+        mesh.rotation.set(0, 0, 0)
+      })
     })
+
+    if (Math.abs(dragVelocity.x) > 0.0001 || Math.abs(dragVelocity.y) > 0.0001 || dragActive) {
+      spriteGroup.rotation.x += dragVelocity.x
+      spriteGroup.rotation.y += dragVelocity.y
+      spriteGroup.rotation.x = Math.max(Math.min(spriteGroup.rotation.x, 0.6), -0.6)
+
+      if (!dragActive) {
+        dragVelocity.x *= 0.92
+        dragVelocity.y *= 0.92
+        if (Math.abs(dragVelocity.x) < 0.0001) dragVelocity.x = 0
+        if (Math.abs(dragVelocity.y) < 0.0001) dragVelocity.y = 0
+      }
+    }
 
     renderer.render(scene, camera)
   }
@@ -222,12 +269,11 @@ const startAnimation = () => {
 
 const startDrag = (e: MouseEvent | TouchEvent) => {
   isDragging = true
+  dragActive = true
   const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
   const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
   prevMouseX = clientX
   prevMouseY = clientY
-  dragRotationSpeed.x = 0
-  dragRotationSpeed.y = 0
 }
 
 const onDrag = (e: MouseEvent | TouchEvent) => {
@@ -236,32 +282,31 @@ const onDrag = (e: MouseEvent | TouchEvent) => {
   const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
   const deltaX = clientX - prevMouseX
   const deltaY = clientY - prevMouseY
-  dragRotationSpeed.y = deltaX * 0.00008
-  dragRotationSpeed.x = -deltaY * 0.00005
+
+  dragVelocity.x = Math.max(Math.min(deltaY * 0.003, 0.04), -0.04)
+  dragVelocity.y = Math.max(Math.min(deltaX * 0.003, 0.04), -0.04)
+
   prevMouseX = clientX
   prevMouseY = clientY
 }
 
 const stopDrag = () => {
   isDragging = false
+  dragActive = false
 }
 
 const handleResize = () => {
   if (!container.value) return
   const width = container.value.clientWidth
   const height = container.value.clientHeight
-  const aspect = width / height
-  const frustum = 14
-  camera.left = -frustum * aspect
-  camera.right = frustum * aspect
-  camera.top = frustum
-  camera.bottom = -frustum
+  camera.aspect = width / height
   camera.updateProjectionMatrix()
   renderer.setSize(width, height)
 }
 
 watch(() => props.artworks, () => {
   textures = []
+  animTime = 0
   loadTextures()
 })
 

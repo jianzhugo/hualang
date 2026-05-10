@@ -4,7 +4,8 @@
       <div class="gallery-hero-bg" />
       <div class="gallery-hero-overlay" />
       <div class="gallery-hero-content">
-        <h1 class="gallery-hero-title">未来艺术家</h1>
+        <h1 class="gallery-hero-title">稚笔生花</h1>
+        <p class="gallery-hero-subtitle">小小的手，画出大大的世界</p>
       </div>
     </section>
 

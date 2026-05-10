@@ -295,23 +295,42 @@
   }
 
   .gallery-hero-title {
-    font-size: 48px;
+    font-size: 36px;
     font-weight: 700;
     line-height: 1.1;
     letter-spacing: -1.5px;
     color: var(--color-ink);
-    margin: 0;
+    margin-bottom: 0.5rem;
   }
 
   @media (min-width: 768px) {
     .gallery-hero-title {
-      font-size: 72px;
+      font-size: 48px;
     }
   }
 
   @media (min-width: 1024px) {
     .gallery-hero-title {
-      font-size: 96px;
+      font-size: 64px;
+    }
+  }
+
+  .gallery-hero-subtitle {
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--color-mute);
+  }
+
+  @media (min-width: 768px) {
+    .gallery-hero-subtitle {
+      font-size: 20px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .gallery-hero-subtitle {
+      font-size: 24px;
     }
   }
 

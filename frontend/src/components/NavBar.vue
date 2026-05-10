@@ -7,7 +7,7 @@
       </button>
 
       <router-link to="/" class="text-lg font-semibold text-ink hover:text-primary transition-colors shrink-0">
-        🎨 儿童画廊
+        小小艺境
       </router-link>
 
       <div class="hidden md:flex items-center gap-2">
