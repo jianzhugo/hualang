@@ -1,12 +1,17 @@
 <template>
-  <main class="page-container py-8">
-    <h1
-      class="text-heading-xl font-bold tracking-tight text-ink mb-2"
-      style="letter-spacing: -1.2px;"
-    >
-      上传画作
-    </h1>
-    <p class="text-body-md text-mute mb-8">将孩子的画作安全上传到画廊</p>
+  <Teleport to="body">
+    <img class="upload-bg" src="../assets/bg.webp" alt="" aria-hidden="true" />
+  </Teleport>
+
+  <main class="page-container py-4" style="position: relative; z-index: 1;">
+    <div class="upload-header">
+      <h1
+        class="upload-title"
+      >
+        稚笔生花
+      </h1>
+      <p class="upload-subtitle">小小的手，画出大大的世界</p>
+    </div>
 
     <!-- 密码验证 -->
     <div v-if="!uploadStore.isAuthenticated" class="form-container">
@@ -31,8 +36,8 @@
     <!-- 上传界面 -->
     <div v-else class="form-container">
       <!-- 上传者选择 -->
-      <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">上传者 *</label>
+      <div class="mb-3">
+        <label class="block text-body-sm font-semibold text-ink mb-1">上传者 *</label>
         <input
           v-model="uploadStore.selectedUploader"
           list="uploader-list"
@@ -41,16 +46,13 @@
           class="text-input"
         />
         <datalist id="uploader-list">
-          <option value="爸爸" />
-          <option value="妈妈" />
-          <option value="爷爷" />
-          <option value="奶奶" />
+          <option v-for="uploader in existingUploaders" :key="uploader" :value="uploader" />
         </datalist>
       </div>
 
       <!-- 作者输入/选择 -->
-      <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">作品作者 *</label>
+      <div class="mb-3">
+        <label class="block text-body-sm font-semibold text-ink mb-1">作品作者 *</label>
         <input
           v-model="uploadStore.selectedAuthor"
           list="author-list"
@@ -64,15 +66,15 @@
       </div>
 
       <!-- 作品创作日期 -->
-      <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">创作日期</label>
+      <div class="mb-3">
+        <label class="block text-body-sm font-semibold text-ink mb-1">创作日期</label>
         <input v-model="uploadStore.createdDate" type="date" class="text-input" />
       </div>
 
       <!-- 标签输入 -->
-      <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">标签</label>
-        <div class="flex gap-2 mb-2">
+      <div class="mb-3">
+        <label class="block text-body-sm font-semibold text-ink mb-1">标签</label>
+        <div class="flex gap-2 mb-1">
           <input
             v-model="tagInput"
             type="text"
@@ -82,7 +84,7 @@
           />
           <button type="button" class="btn-secondary" @click="addTag">添加</button>
         </div>
-        <div v-if="existingTags.length > 0" class="mb-2">
+        <div v-if="existingTags.length > 0" class="mb-1">
           <p class="text-caption-sm text-mute mb-1">已有标签（点击快速添加）：</p>
           <div class="flex flex-wrap gap-1.5">
             <button
@@ -121,8 +123,8 @@
       </div>
 
       <!-- 压缩选项 -->
-      <div class="mb-6">
-        <label class="block text-body-sm font-semibold text-ink mb-2">压缩图片</label>
+      <div class="mb-3">
+        <label class="block text-body-sm font-semibold text-ink mb-1">压缩图片</label>
         <div class="flex gap-2">
           <button
             type="button"
@@ -152,7 +154,7 @@
 
       <!-- 拖拽上传区 -->
       <div
-        class="border-2 border-dashed border-hairline rounded-lg p-8 text-center transition-colors cursor-pointer mb-6"
+        class="border-2 border-dashed border-hairline rounded-lg p-5 text-center transition-colors cursor-pointer mb-4"
         :class="{ 'border-primary bg-primary/5': isDragging }"
         @dragover.prevent="isDragging = true"
         @dragleave.prevent="isDragging = false"
@@ -167,9 +169,9 @@
           class="hidden"
           @change="handleFileSelect"
         />
-        <div class="text-4xl mb-3">📁</div>
-        <p class="text-body-md text-ink font-medium mb-1">点击或拖拽图片到此处上传</p>
-        <p class="text-body-sm text-mute">支持 JPG、PNG、WebP 格式，最多同时上传 3 张</p>
+        <div class="text-2xl mb-2">📁</div>
+        <p class="text-body-sm text-ink font-medium mb-1">点击或拖拽图片到此处上传</p>
+        <p class="text-caption-sm text-mute">支持 JPG、PNG、WebP 格式，最多同时上传 5 张</p>
       </div>
 
       <!-- 上传队列 -->
@@ -229,7 +231,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { X } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
@@ -248,6 +250,11 @@ const tagsExpanded = ref(false)
 const existingAuthors = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
   return authors
+})
+
+const existingUploaders = computed(() => {
+  const uploaders = [...new Set(galleryStore.artworks.map((a) => a.uploader))]
+  return uploaders
 })
 
 const hasPendingItems = computed(() =>
@@ -269,6 +276,10 @@ const displayedExistingTags = computed(() => {
 onMounted(() => {
   uploadStore.checkAuth()
   galleryStore.fetchGallery()
+})
+
+onUnmounted(() => {
+  document.querySelector('.upload-bg')?.remove()
 })
 
 const handleVerify = async () => {
@@ -302,8 +313,8 @@ const handleDrop = (e: DragEvent) => {
 }
 
 const addFiles = (files: File[]) => {
-  if (!uploadStore.selectedUploader) {
-    uploadStore.selectedUploader = '爸爸'
+  if (!uploadStore.selectedUploader && existingUploaders.value.length > 0) {
+    uploadStore.selectedUploader = existingUploaders.value[0]
   }
   if (!uploadStore.selectedAuthor && existingAuthors.value.length > 0) {
     uploadStore.selectedAuthor = existingAuthors.value[0]
@@ -371,3 +382,40 @@ const formatStatus = (status: string): string => {
 }
 
 </script>
+
+<style scoped>
+.upload-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(8px);
+}
+
+.upload-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.upload-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  letter-spacing: -1.2px;
+  color: #1a1a2e;
+  margin-bottom: 0.25rem;
+}
+
+.upload-subtitle {
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.form-container {
+  max-width: 500px;
+  margin: 0 auto;
+}
+</style>

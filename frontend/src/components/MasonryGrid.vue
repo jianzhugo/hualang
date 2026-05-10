@@ -1,6 +1,6 @@
 <template>
-  <div class="grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
-    <div v-for="artwork in artworks" :key="artwork.key" class="break-inside-avoid">
+  <div class="masonry-grid">
+    <div v-for="artwork in artworks" :key="artwork.key" class="masonry-item">
       <PinCard
         :artwork="artwork"
         :aspect-ratio="getAspectRatio(artwork.key)"
@@ -34,3 +34,15 @@ const getAspectRatio = (key: string): string => {
   return ratios[hash % ratios.length]
 }
 </script>
+
+<style scoped>
+.masonry-grid {
+  columns: 280px;
+  column-gap: 8px;
+}
+
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 8px;
+}
+</style>

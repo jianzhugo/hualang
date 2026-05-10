@@ -131,7 +131,13 @@ const emit = defineEmits<{
 const panelRef = ref<HTMLElement>()
 
 const handleClickOutside = (e: MouseEvent) => {
-  if (panelRef.value && !panelRef.value.contains(e.target as Node)) {
+  const filterBtn = document.querySelector('.filter-trigger-btn')
+  if (
+    panelRef.value &&
+    !panelRef.value.contains(e.target as Node) &&
+    filterBtn &&
+    !filterBtn.contains(e.target as Node)
+  ) {
     emit('close')
   }
 }

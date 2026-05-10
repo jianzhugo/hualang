@@ -117,7 +117,7 @@ export const useUploadStore = defineStore('upload', () => {
 
   const processQueue = async (onProgress?: (item: UploadItem) => void) => {
     isUploading.value = true
-    const CONCURRENCY = 3
+    const CONCURRENCY = 5
 
     const processNext = async (): Promise<void> => {
       const pending = uploadQueue.value.filter(

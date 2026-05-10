@@ -107,23 +107,24 @@ async function handleUpload(request: Request, env: Env, origin: string, key: str
   }
 }
 
-async function handleImage(request: Request, env: Env, origin: string, key: string): Promise<Response> {
+async function handleImage(request: Request, env: Env, _origin: string, key: string): Promise<Response> {
   try {
     const obj = await env.GALLERY_BUCKET.get(key)
     if (!obj) {
-      return errorResponse(404, 'Image not found', env, origin)
+      return errorResponse(404, 'Image not found', env, _origin)
     }
+    const requestOrigin = request.headers.get('Origin') || '*'
     const body = await obj.arrayBuffer()
     return new Response(body, {
       status: 200,
       headers: {
         'Content-Type': obj.httpMetadata?.contentType || 'image/webp',
         'Cache-Control': 'public, max-age=31536000',
-        ...corsHeaders(env, origin)
+        ...corsHeaders(env, requestOrigin)
       }
     })
   } catch {
-    return errorResponse(500, 'Failed to read image', env, origin)
+    return errorResponse(500, 'Failed to read image', env, _origin)
   }
 }
 
