@@ -144,24 +144,6 @@
     );
   }
   
-  /* 3D 背景渐变遮罩：上下不透明，中间透明 */
-  .hero-gradient-overlay-3d {
-    background: linear-gradient(
-      to bottom,
-      var(--color-canvas) 0%,
-      var(--color-canvas) 5%,
-      rgba(255, 255, 255, 0.95) 15%,
-      rgba(255, 255, 255, 0.8) 30%,
-      rgba(255, 255, 255, 0.4) 45%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0.4) 55%,
-      rgba(255, 255, 255, 0.8) 70%,
-      rgba(255, 255, 255, 0.95) 85%,
-      var(--color-canvas) 95%,
-      var(--color-canvas) 100%
-    );
-  }
-
   .hero-content {
     position: relative;
     z-index: 10;

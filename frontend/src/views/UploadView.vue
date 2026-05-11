@@ -1,6 +1,6 @@
 <template>
   <main class="upload-page">
-    <img class="upload-bg" src="../assets/bg.webp" alt="" aria-hidden="true" />
+    <img class="upload-bg" src="../assets/shangchuan-bg.webp" alt="" aria-hidden="true" />
 
     <!-- 密码验证 -->
     <div v-if="!uploadStore.isAuthenticated" class="upload-hero">
