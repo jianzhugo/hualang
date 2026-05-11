@@ -109,6 +109,32 @@
       :artwork="editingArtwork"
       @save="handleSave"
     />
+
+    <!-- 编辑密码验证 -->
+    <Teleport to="body">
+      <Transition name="auth-fade">
+        <div v-if="showEditAuth" class="auth-overlay" @click.self="showEditAuth = false">
+          <div class="auth-modal">
+            <p class="auth-title">验证后才可编辑</p>
+            <div class="auth-input-group">
+              <input
+                ref="authInputRef"
+                v-model="editPassword"
+                type="password"
+                placeholder="请输入密码"
+                class="auth-input"
+                @keyup.enter="verifyEditPassword"
+              />
+            </div>
+            <p v-if="editPasswordError" class="auth-error">{{ editPasswordError }}</p>
+            <div class="auth-actions">
+              <button class="auth-btn auth-btn-cancel" @click="showEditAuth = false">取消</button>
+              <button class="auth-btn auth-btn-confirm" @click="verifyEditPassword">确定</button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
     </main>
   </div>
 </template>
@@ -146,6 +172,10 @@ const editDialogVisible = ref(false)
 const editingArtwork = ref<ArtworkItem | null>(null)
 const syncMessage = ref('')
 const syncing = ref(false)
+const showEditAuth = ref(false)
+const editPassword = ref('')
+const editPasswordError = ref('')
+const pendingEditArtwork = ref<ArtworkItem | null>(null)
 
 const authors = computed(() => {
   return [...new Set(galleryStore.artworks.map((a) => a.author).filter(Boolean))]
@@ -254,8 +284,33 @@ const openLightbox = (artwork: (typeof galleryStore.artworks)[0]) => {
 }
 
 const openEdit = (artwork: (typeof galleryStore.artworks)[0]) => {
-  editingArtwork.value = artwork
-  editDialogVisible.value = true
+  const stored = sessionStorage.getItem('gallery_auth')
+  if (stored) {
+    editingArtwork.value = artwork
+    editDialogVisible.value = true
+  } else {
+    pendingEditArtwork.value = artwork
+    editPassword.value = ''
+    editPasswordError.value = ''
+    showEditAuth.value = true
+  }
+}
+
+const verifyEditPassword = async () => {
+  if (!editPassword.value) return
+  editPasswordError.value = ''
+  try {
+    const { getToken } = await import('../api/client')
+    await getToken(editPassword.value)
+    sessionStorage.setItem('gallery_auth', editPassword.value)
+    showEditAuth.value = false
+    if (pendingEditArtwork.value) {
+      editingArtwork.value = pendingEditArtwork.value
+      editDialogVisible.value = true
+    }
+  } catch {
+    editPasswordError.value = '密码不正确'
+  }
 }
 
 const handleSave = async (data: { key: string; title: string; uploader: string; author: string; createdDate: string; tags: string[] }) => {

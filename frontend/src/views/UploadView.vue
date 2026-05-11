@@ -1,35 +1,27 @@
 <template>
-  <Teleport to="body">
+  <main class="upload-page">
     <img class="upload-bg" src="../assets/bg.webp" alt="" aria-hidden="true" />
-  </Teleport>
-
-  <main class="page-container py-4" style="position: relative; z-index: 1;">
-    <div class="upload-header">
-      <h1
-        class="upload-title"
-      >
-        稚笔生花
-      </h1>
-      <p class="upload-subtitle">小小的手，画出大大的世界</p>
-    </div>
 
     <!-- 密码验证 -->
-    <div v-if="!uploadStore.isAuthenticated" class="form-container">
-      <div class="feature-card-soft">
-        <h2 class="text-heading-lg font-semibold text-ink mb-4">请输入上传密码</h2>
-        <div class="space-y-4">
+    <div v-if="!uploadStore.isAuthenticated" class="upload-hero">
+      <div class="upload-header">
+        <h1 class="upload-title">稚笔生花</h1>
+        <p class="upload-subtitle">小小的手，画出大大的世界</p>
+      </div>
+      <div class="form-container">
+        <div class="password-field">
           <input
             v-model="passwordInput"
             type="password"
-            placeholder="输入密码"
-            class="text-input"
+            placeholder="输入密码后回车验证"
+            class="password-field-input"
             @keyup.enter="handleVerify"
           />
-          <p v-if="passwordError" class="text-error text-sm">{{ passwordError }}</p>
-          <button class="btn-primary w-full" :disabled="verifying" @click="handleVerify">
-            {{ verifying ? '验证中...' : '验证' }}
+          <button class="password-field-btn" :disabled="verifying" @click="handleVerify">
+            <Lock :size="16" />
           </button>
         </div>
+        <p v-if="passwordError" class="password-error">{{ passwordError }}</p>
       </div>
     </div>
 
@@ -232,7 +224,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { X } from 'lucide-vue-next'
+import { X, Lock } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
 import { compressImage } from '../composables/useImageCompress'
@@ -279,7 +271,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  document.querySelector('.upload-bg')?.remove()
 })
 
 const handleVerify = async () => {
@@ -385,37 +376,87 @@ const formatStatus = (status: string): string => {
 
 <style scoped>
 .upload-bg {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   z-index: 0;
   pointer-events: none;
   filter: blur(8px);
 }
 
+.upload-page {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.upload-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0 var(--spacing-lg);
+}
+
 .upload-header {
+  position: absolute;
+  top: 25%;
+  left: 0;
+  right: 0;
   text-align: center;
-  margin-bottom: 1rem;
+  transform: translateY(-50%);
 }
 
 .upload-title {
-  font-size: 1.875rem;
+  font-size: 36px;
   font-weight: 700;
-  letter-spacing: -1.2px;
-  color: #1a1a2e;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  color: var(--color-ink);
   margin-bottom: 0.25rem;
 }
 
+@media (min-width: 768px) {
+  .upload-title {
+    font-size: 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .upload-title {
+    font-size: 64px;
+  }
+}
+
 .upload-subtitle {
-  font-size: 0.95rem;
-  color: #6b7280;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-mute);
+}
+
+@media (min-width: 768px) {
+  .upload-subtitle {
+    font-size: 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .upload-subtitle {
+    font-size: 24px;
+  }
 }
 
 .form-container {
+  width: 100%;
   max-width: 500px;
-  margin: 0 auto;
 }
 </style>

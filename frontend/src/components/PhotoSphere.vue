@@ -1,5 +1,5 @@
 <template>
-  <div ref="container" class="photo-sphere-container" @mousedown="startDrag" @mousemove="onDrag" @mouseup="stopDrag" @mouseleave="stopDrag" @touchstart="startDrag" @touchmove="onDrag" @touchend="stopDrag">
+  <div ref="container" class="photo-sphere-container">
     <canvas ref="canvas"></canvas>
   </div>
 </template>
@@ -22,26 +22,23 @@ const emit = defineEmits(['loaded'])
 
 const isMobile = () => window.innerWidth < 768
 
-interface TrackData {
-  meshes: THREE.Mesh[]
-  speed: number
-  trackWidth: number
-}
-
 let scene: THREE.Scene
 let camera: THREE.PerspectiveCamera
 let renderer: THREE.WebGLRenderer
-let spriteGroup: THREE.Group
+let cardGroup: THREE.Group
 let animationId: number
-let dragVelocity = { x: 0, y: 0 }
-let isDragging = false
-let prevMouseX = 0
-let prevMouseY = 0
-let dragActive = false
 let textures: THREE.Texture[] = []
-let tracks: TrackData[] = []
+let cards: THREE.Mesh[] = []
 let animTime = 0
-const tempVec = new THREE.Vector3()
+let mouseX = 0
+let mouseY = 0
+let targetRotationX = 0
+let targetRotationY = 0
+
+const CARD_CONFIG = {
+  mobile: { count: 20, radius: 8, spread: 6 },
+  desktop: { count: 50, radius: 12, spread: 10 }
+}
 
 const init = () => {
   if (!container.value || !canvas.value) return
@@ -56,16 +53,26 @@ const init = () => {
   })
   renderer.setSize(width, height)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.shadowMap.enabled = false
 
   scene = new THREE.Scene()
+  scene.fog = new THREE.Fog(0x000000, 15, 35)
 
   const aspect = width / height
-  camera = new THREE.PerspectiveCamera(70, aspect, 0.1, 100)
+  camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 100)
   camera.position.set(0, 0, 0)
 
-  spriteGroup = new THREE.Group()
-  scene.add(spriteGroup)
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+  scene.add(ambientLight)
 
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8)
+  dirLight.position.set(5, 5, 5)
+  scene.add(dirLight)
+
+  cardGroup = new THREE.Group()
+  scene.add(cardGroup)
+
+  window.addEventListener('mousemove', onMouseMove)
   loadTextures()
 }
 
@@ -74,11 +81,16 @@ const seededRandom = (seed: number) => {
   return x - Math.floor(x)
 }
 
+const onMouseMove = (e: MouseEvent) => {
+  mouseX = (e.clientX / window.innerWidth) * 2 - 1
+  mouseY = (e.clientY / window.innerHeight) * 2 - 1
+}
+
 const loadTextures = () => {
   if (!props.artworks.length) return
 
-  const maxCount = isMobile() ? 24 : 72
-  const artworksToLoad = props.artworks.slice(0, maxCount)
+  const config = isMobile() ? CARD_CONFIG.mobile : CARD_CONFIG.desktop
+  const artworksToLoad = props.artworks.slice(0, config.count)
 
   let loadedCount = 0
   const total = artworksToLoad.length
@@ -97,7 +109,7 @@ const loadTextures = () => {
       textures.push(texture)
       loadedCount++
       if (loadedCount >= total) {
-        createSprites()
+        createCards()
         emit('loaded')
       }
     }
@@ -112,106 +124,135 @@ const loadTextures = () => {
   }
 }
 
-const createSprites = () => {
-  tracks.forEach((track) => {
-    track.meshes.forEach((mesh) => {
-      scene.remove(mesh)
-      mesh.geometry.dispose()
-      if (mesh.material instanceof THREE.Material) {
-        mesh.material.dispose()
-      }
-    })
+const createCards = () => {
+  cards.forEach((card) => {
+    cardGroup.remove(card)
+    card.geometry.dispose()
+    if (card.material instanceof THREE.Material) {
+      card.material.dispose()
+    }
   })
-  tracks = []
+  cards = []
 
   if (!textures.length) return
 
-  const count = Math.min(textures.length, isMobile() ? 24 : 72)
-  const trackCount = isMobile() ? 4 : 6
-  const itemsPerTrack = Math.ceil(count / trackCount)
+  const config = isMobile() ? CARD_CONFIG.mobile : CARD_CONFIG.desktop
+  const count = Math.min(textures.length, config.count)
 
-  const aspect = container.value?.clientWidth && container.value?.clientHeight
-    ? container.value.clientWidth / container.value.clientHeight
-    : 16 / 9
-  const fovRad = (camera.fov * Math.PI) / 180
-  const halfFovTan = Math.tan(fovRad / 2)
+  for (let i = 0; i < count; i++) {
+    const texture = textures[i % textures.length]
+    texture.minFilter = THREE.LinearFilter
+    texture.magFilter = THREE.LinearFilter
+    texture.generateMipmaps = false
 
-  for (let t = 0; t < trackCount; t++) {
-    const trackMeshes: THREE.Mesh[] = []
-    const depthRatio = t / Math.max(trackCount - 1, 1)
+    const img = texture.image as HTMLImageElement | undefined
+    const imgAspect = img ? Math.max(Math.min(img.width / img.height, 1.6), 0.6) : 1
 
-    const zDepth = -(3 + depthRatio * 19)
-    const dist = Math.abs(zDepth)
+    const baseSize = isMobile() ? 0.8 : 1.2
+    const sizeJitter = 0.7 + seededRandom(i * 31) * 0.6
+    const cardH = baseSize * sizeJitter
+    const cardW = cardH * imgAspect
 
-    const speed = 0.035 + (1 - depthRatio) * 0.040
+    const geometry = new THREE.PlaneGeometry(cardW, cardH)
+    
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = Math.floor(256 / imgAspect)
+    const ctx = canvas.getContext('2d')!
 
-    const visibleH = 2 * halfFovTan * dist
-    const visibleW = visibleH * aspect
-    const trackWidth = visibleW * 2.4
-    const trackHeight = visibleH * 1.4
+    ctx.fillStyle = '#ffffff'
+    roundRect(ctx, 0, 0, canvas.width, canvas.height, 12)
+    ctx.fill()
 
-    const cellW = trackWidth / itemsPerTrack
+    ctx.save()
+    roundedClip(ctx, 4, 4, canvas.width - 8, canvas.height - 8, 8)
+    ctx.drawImage(img || new Image(), 4, 4, canvas.width - 8, canvas.height - 8)
+    ctx.restore()
 
-    for (let i = 0; i < itemsPerTrack; i++) {
-      const idx = (t * itemsPerTrack + i) % textures.length
-      if (idx >= textures.length) break
+    const cardTexture = new THREE.CanvasTexture(canvas)
+    cardTexture.needsUpdate = true
 
-      const texture = textures[idx]
-      texture.minFilter = THREE.LinearFilter
-      texture.magFilter = THREE.LinearFilter
-      texture.generateMipmaps = false
+    const material = new THREE.MeshBasicMaterial({
+      map: cardTexture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    })
 
-      const img = texture.image as HTMLImageElement | undefined
-      const imgAspect = img ? Math.max(Math.min(img.width / img.height, 1.8), 0.5) : 1
+    const mesh = new THREE.Mesh(geometry, material)
 
-      const worldSize = dist * 0.14
-      const sizeJitter = 0.7 + seededRandom(t * 97 + i * 31) * 0.6
-      const planeH = worldSize * sizeJitter
-      const planeW = planeH * imgAspect
+    const phi = Math.acos(-1 + (2 * i) / count)
+    const theta = Math.sqrt(count * Math.PI) * phi
+    
+    const radius = config.radius + (seededRandom(i * 47) - 0.5) * config.spread
+    const x = radius * Math.cos(theta) * Math.sin(phi)
+    const y = radius * Math.sin(theta) * Math.sin(phi) * 0.6
+    const z = radius * Math.cos(phi) - 5
 
-      const geometry = new THREE.PlaneGeometry(planeW, planeH)
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0.25 + (1 - depthRatio) * 0.55,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      })
-      const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.set(x, y, z)
+    
+    mesh.rotation.y = theta + seededRandom(i * 73) * 0.5
+    mesh.rotation.x = (seededRandom(i * 59) - 0.5) * 0.3
+    mesh.rotation.z = (seededRandom(i * 61) - 0.5) * 0.2
 
-      const colOffset = (i - itemsPerTrack / 2 + 0.5) * cellW
-      const jitterX = (seededRandom(t * 13 + i * 67) - 0.5) * cellW * 0.4
-      const x = colOffset + jitterX
+    const distFromCenter = Math.sqrt(x * x + y * y + z * z)
+    const normalizedDist = Math.min(distFromCenter / config.radius, 1)
+    const opacity = 0.3 + (1 - normalizedDist) * 0.7
+    material.opacity = opacity
 
-      const jitterY = (seededRandom(t * 43 + i * 53 + 9) - 0.5) * trackHeight * 0.7
-      const y = jitterY
-
-      const rotZ = (seededRandom(t * 31 + i * 41 + 17) - 0.5) * 0.3
-      const rotX = (seededRandom(t * 23 + i * 37 + 5) - 0.5) * 0.12
-
-      mesh.position.set(x, y, zDepth)
-      mesh.rotation.z = rotZ
-      mesh.rotation.x = rotX
-
-      mesh.userData = {
-        baseX: x,
-        baseY: y,
-        baseZ: zDepth,
-        rotZ,
-        rotX,
-        floatPhase: seededRandom(t * 59 + i * 73 + 11) * Math.PI * 2,
-        floatSpeed: 0.3 + seededRandom(t * 61 + i * 79 + 3) * 0.3,
-        floatAmp: 0.15 + seededRandom(t * 67 + i * 83 + 7) * 0.25
-      }
-
-      scene.add(mesh)
-      trackMeshes.push(mesh)
+    mesh.userData = {
+      basePos: new THREE.Vector3(x, y, z),
+      baseRot: new THREE.Euler(mesh.rotation.x, mesh.rotation.y, mesh.rotation.z),
+      floatPhaseX: seededRandom(i * 23) * Math.PI * 2,
+      floatPhaseY: seededRandom(i * 41) * Math.PI * 2,
+      floatPhaseZ: seededRandom(i * 67) * Math.PI * 2,
+      floatSpeedX: 0.2 + seededRandom(i * 29) * 0.3,
+      floatSpeedY: 0.15 + seededRandom(i * 53) * 0.25,
+      floatSpeedZ: 0.1 + seededRandom(i * 71) * 0.2,
+      floatAmpX: 0.08 + seededRandom(i * 37) * 0.12,
+      floatAmpY: 0.06 + seededRandom(i * 43) * 0.1,
+      floatAmpZ: 0.04 + seededRandom(i * 79) * 0.08,
+      rotSpeedY: 0.05 + seededRandom(i * 83) * 0.1,
+      rotSpeedX: (seededRandom(i * 89) - 0.5) * 0.03,
+      breathPhase: seededRandom(i * 97) * Math.PI * 2,
+      breathSpeed: 0.3 + seededRandom(i * 101) * 0.2,
+      breathAmp: 0.03 + seededRandom(i * 103) * 0.04,
+      baseScale: 0.9 + seededRandom(i * 107) * 0.2,
+      baseOpacity: opacity
     }
 
-    tracks.push({ meshes: trackMeshes, speed, trackWidth })
+    cardGroup.add(mesh)
+    cards.push(mesh)
   }
 
   startAnimation()
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+}
+
+function roundedClip(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+  ctx.clip()
 }
 
 const startAnimation = () => {
@@ -226,73 +267,39 @@ const startAnimation = () => {
 
     animTime += dt
 
-    const dragInfluence = 1 + Math.abs(dragVelocity.y) * 4
+    targetRotationY = mouseX * 0.3
+    targetRotationX = mouseY * 0.2
 
-    tracks.forEach((track) => {
-      const offset = animTime * track.speed * 12 * dragInfluence
+    cardGroup.rotation.y += (targetRotationY - cardGroup.rotation.y) * 0.02
+    cardGroup.rotation.x += (targetRotationX - cardGroup.rotation.x) * 0.02
 
-      track.meshes.forEach((mesh) => {
-        const d = mesh.userData
-        let newX = d.baseX - offset
+    cards.forEach((card) => {
+      const d = card.userData
 
-        const halfW = track.trackWidth / 2
-        if (newX < d.baseX - halfW) {
-          newX += track.trackWidth
-        }
+      const floatX = Math.sin(animTime * d.floatSpeedX + d.floatPhaseX) * d.floatAmpX
+      const floatY = Math.sin(animTime * d.floatSpeedY + d.floatPhaseY) * d.floatAmpY
+      const floatZ = Math.cos(animTime * d.floatSpeedZ + d.floatPhaseZ) * d.floatAmpZ
 
-        const floatY = Math.sin(animTime * d.floatSpeed + d.floatPhase) * d.floatAmp
+      card.position.x = d.basePos.x + floatX
+      card.position.y = d.basePos.y + floatY
+      card.position.z = d.basePos.z + floatZ
 
-        tempVec.set(newX, d.baseY + floatY, d.baseZ)
-        tempVec.applyEuler(spriteGroup.rotation)
-        mesh.position.copy(tempVec)
-        mesh.rotation.set(0, 0, 0)
-      })
-    })
+      card.rotation.y = d.baseRot.y + animTime * d.rotSpeedY
+      card.rotation.x = d.baseRot.x + Math.sin(animTime * d.rotSpeedX * 10) * 0.05
 
-    if (Math.abs(dragVelocity.x) > 0.0001 || Math.abs(dragVelocity.y) > 0.0001 || dragActive) {
-      spriteGroup.rotation.x += dragVelocity.x
-      spriteGroup.rotation.y += dragVelocity.y
-      spriteGroup.rotation.x = Math.max(Math.min(spriteGroup.rotation.x, 0.6), -0.6)
+      const breathe = 1 + Math.sin(animTime * d.breathSpeed + d.breathPhase) * d.breatheAmp
+      const scale = d.baseScale * breathe
+      card.scale.set(scale, scale, scale)
 
-      if (!dragActive) {
-        dragVelocity.x *= 0.92
-        dragVelocity.y *= 0.92
-        if (Math.abs(dragVelocity.x) < 0.0001) dragVelocity.x = 0
-        if (Math.abs(dragVelocity.y) < 0.0001) dragVelocity.y = 0
+      if (card.material instanceof THREE.Material) {
+        const opacityWave = Math.sin(animTime * 0.2 + d.floatPhaseY) * 0.05
+        card.material.opacity = Math.max(0.1, d.baseOpacity + opacityWave)
       }
-    }
+    })
 
     renderer.render(scene, camera)
   }
   animate()
-}
-
-const startDrag = (e: MouseEvent | TouchEvent) => {
-  isDragging = true
-  dragActive = true
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  prevMouseX = clientX
-  prevMouseY = clientY
-}
-
-const onDrag = (e: MouseEvent | TouchEvent) => {
-  if (!isDragging) return
-  const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
-  const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
-  const deltaX = clientX - prevMouseX
-  const deltaY = clientY - prevMouseY
-
-  dragVelocity.x = Math.max(Math.min(deltaY * 0.003, 0.04), -0.04)
-  dragVelocity.y = Math.max(Math.min(deltaX * 0.003, 0.04), -0.04)
-
-  prevMouseX = clientX
-  prevMouseY = clientY
-}
-
-const stopDrag = () => {
-  isDragging = false
-  dragActive = false
 }
 
 const handleResize = () => {
@@ -306,6 +313,7 @@ const handleResize = () => {
 
 watch(() => props.artworks, () => {
   textures = []
+  cards = []
   animTime = 0
   loadTextures()
 })
@@ -318,6 +326,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(animationId)
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener('mousemove', onMouseMove)
   renderer?.dispose()
   textures.forEach((t) => t.dispose())
 })
