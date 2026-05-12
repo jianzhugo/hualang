@@ -151,13 +151,6 @@ function moveNext() {
   }
 }
 
-function movePrev() {
-  if (position.value > 0) {
-    position.value--
-    applyStyles()
-  }
-}
-
 function snapToNearest() {
   const stepPx = step.value
   const snappedOffset = Math.round(-dragTranslate.value / stepPx)
@@ -217,7 +210,7 @@ function onDragMove(e: MouseEvent | TouchEvent) {
   })
 }
 
-function onDragEnd(e: MouseEvent | TouchEvent) {
+function onDragEnd(_e: MouseEvent | TouchEvent) {
   if (!isDragging.value) return
   isDragging.value = false
   if (carouselRef.value) carouselRef.value.style.cursor = 'grab'

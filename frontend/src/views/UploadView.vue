@@ -275,8 +275,6 @@ const tagInput = ref('')
 const tagsExpanded = ref(false)
 const showUploaderDropdown = ref(false)
 const showAuthorDropdown = ref(false)
-const uploaderDropdownRef = ref<HTMLElement>()
-const authorDropdownRef = ref<HTMLElement>()
 
 const existingAuthors = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]

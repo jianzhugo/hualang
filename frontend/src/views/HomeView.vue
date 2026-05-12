@@ -127,13 +127,6 @@ const authorArtworks = computed(() => {
   return map
 })
 
-interface CarouselAuthor {
-  name: string
-  pinyin: string
-  artworks: ArtworkItem[]
-  isReversed: boolean
-}
-
 const bangArtworks = computed<ArtworkItem[]>(() => {
   const sorted = [...galleryStore.artworks].sort((a, b) => {
     const da = a.createdDate || a.date
