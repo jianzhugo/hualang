@@ -1,6 +1,17 @@
 <template>
   <main class="upload-page">
-    <img class="upload-bg" src="../assets/shangchuan-bg.webp" alt="" aria-hidden="true" />
+    <ul class="bg-bubbles" aria-hidden="true">
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+      <li></li>
+    </ul>
 
     <!-- 密码验证 -->
     <div v-if="!uploadStore.isAuthenticated" class="upload-hero">
@@ -26,35 +37,58 @@
     </div>
 
     <!-- 上传界面 -->
-    <div v-else class="form-container">
+    <div v-else class="upload-form-wrapper">
+    <div class="upload-form-card">
       <!-- 上传者选择 -->
       <div class="mb-3">
         <label class="block text-body-sm font-semibold text-ink mb-1">上传者 *</label>
-        <input
-          v-model="uploadStore.selectedUploader"
-          list="uploader-list"
-          type="text"
-          placeholder="选择或输入上传者"
-          class="text-input"
-        />
-        <datalist id="uploader-list">
-          <option v-for="uploader in existingUploaders" :key="uploader" :value="uploader" />
-        </datalist>
+        <div class="dropdown-wrapper" ref="uploaderDropdownRef">
+          <input
+            v-model="uploadStore.selectedUploader"
+            type="text"
+            placeholder="选择或输入上传者"
+            class="text-input"
+            @focus="showUploaderDropdown = true"
+            @input="showUploaderDropdown = true"
+            @blur="handleUploaderBlur"
+          />
+          <ul v-if="showUploaderDropdown && filteredUploaders.length > 0" class="dropdown-list">
+            <li
+              v-for="uploader in filteredUploaders"
+              :key="uploader"
+              class="dropdown-item"
+              @mousedown.prevent="selectUploader(uploader)"
+            >
+              {{ uploader }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <!-- 作者输入/选择 -->
       <div class="mb-3">
         <label class="block text-body-sm font-semibold text-ink mb-1">作品作者 *</label>
-        <input
-          v-model="uploadStore.selectedAuthor"
-          list="author-list"
-          type="text"
-          placeholder="选择或输入新作者"
-          class="text-input"
-        />
-        <datalist id="author-list">
-          <option v-for="author in existingAuthors" :key="author" :value="author" />
-        </datalist>
+        <div class="dropdown-wrapper" ref="authorDropdownRef">
+          <input
+            v-model="uploadStore.selectedAuthor"
+            type="text"
+            placeholder="选择或输入新作者"
+            class="text-input"
+            @focus="showAuthorDropdown = true"
+            @input="showAuthorDropdown = true"
+            @blur="handleAuthorBlur"
+          />
+          <ul v-if="showAuthorDropdown && filteredAuthors.length > 0" class="dropdown-list">
+            <li
+              v-for="author in filteredAuthors"
+              :key="author"
+              class="dropdown-item"
+              @mousedown.prevent="selectAuthor(author)"
+            >
+              {{ author }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <!-- 作品创作日期 -->
@@ -83,7 +117,7 @@
               v-for="tag in displayedExistingTags"
               :key="tag"
               type="button"
-              class="px-2 py-0.5 text-caption-sm rounded border border-hairline text-mute hover:text-ink hover:border-primary transition-colors"
+              class="tag-btn"
               :class="{ 'opacity-40': uploadStore.selectedTags.includes(tag) }"
               :disabled="uploadStore.selectedTags.includes(tag)"
               @click="addExistingTag(tag)"
@@ -219,6 +253,7 @@
         </button>
       </div>
     </div>
+    </div>
   </main>
 </template>
 
@@ -238,6 +273,10 @@ const isDragging = ref(false)
 const fileInput = ref<HTMLInputElement>()
 const tagInput = ref('')
 const tagsExpanded = ref(false)
+const showUploaderDropdown = ref(false)
+const showAuthorDropdown = ref(false)
+const uploaderDropdownRef = ref<HTMLElement>()
+const authorDropdownRef = ref<HTMLElement>()
 
 const existingAuthors = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
@@ -263,6 +302,18 @@ const existingTags = computed(() => {
 const displayedExistingTags = computed(() => {
   if (tagsExpanded.value) return existingTags.value
   return existingTags.value.slice(0, maxVisibleTags)
+})
+
+const filteredUploaders = computed(() => {
+  const q = uploadStore.selectedUploader.trim().toLowerCase()
+  if (!q) return existingUploaders.value
+  return existingUploaders.value.filter((u) => u.toLowerCase().includes(q))
+})
+
+const filteredAuthors = computed(() => {
+  const q = uploadStore.selectedAuthor.trim().toLowerCase()
+  if (!q) return existingAuthors.value
+  return existingAuthors.value.filter((a) => a.toLowerCase().includes(q))
 })
 
 onMounted(() => {
@@ -331,6 +382,24 @@ const addExistingTag = (tag: string) => {
   }
 }
 
+const selectUploader = (value: string) => {
+  uploadStore.selectedUploader = value
+  showUploaderDropdown.value = false
+}
+
+const selectAuthor = (value: string) => {
+  uploadStore.selectedAuthor = value
+  showAuthorDropdown.value = false
+}
+
+const handleUploaderBlur = () => {
+  setTimeout(() => { showUploaderDropdown.value = false }, 150)
+}
+
+const handleAuthorBlur = () => {
+  setTimeout(() => { showAuthorDropdown.value = false }, 150)
+}
+
 const startUpload = async () => {
   if (!uploadStore.selectedUploader || !uploadStore.selectedAuthor) {
     alert('请填写上传者和作品作者')
@@ -375,18 +444,6 @@ const formatStatus = (status: string): string => {
 </script>
 
 <style scoped>
-.upload-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-  pointer-events: none;
-  filter: blur(8px);
-}
-
 .upload-page {
   position: relative;
   z-index: 1;
@@ -394,6 +451,7 @@ const formatStatus = (status: string): string => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: linear-gradient(to bottom right, #50a3a2 0%, #53e3a6 100%);
 }
 
 .upload-hero {
@@ -455,8 +513,261 @@ const formatStatus = (status: string): string => {
   }
 }
 
-.form-container {
+.upload-form-card {
+  position: relative;
   width: 100%;
   max-width: 500px;
+  padding: 24px;
+  border-radius: 12px;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.upload-form-card::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 14px;
+  padding: 3px;
+  background: linear-gradient(
+    135deg,
+    #ffb366,
+    #66b3e6,
+    #ffb366,
+    #66b3e6
+  );
+  background-size: 200% 200%;
+  animation: gradientFlow 3s ease infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  z-index: -1;
+}
+
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes marquee-border {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
+}
+
+.upload-form-wrapper {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 80px var(--spacing-lg) 48px;
+  overflow-y: auto;
+}
+
+.dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin-top: 2px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.upload-form-card :deep(.text-input) {
+  background: transparent !important;
+  border: 1px solid #9ca3af !important;
+  transition: border-color 0.15s ease;
+}
+
+.upload-form-card :deep(.text-input:focus) {
+  border-color: #ffb366 !important;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 179, 102, 0.3) !important;
+}
+
+.upload-form-card :deep(.border-hairline) {
+  border-color: #9ca3af !important;
+  transition: border-color 0.15s ease;
+}
+
+.upload-form-card :deep(.border-dashed.border-hairline) {
+  border-color: #6b7280 !important;
+}
+
+.upload-form-card :deep(.btn-secondary) {
+  background: transparent !important;
+  border: 1px solid #9ca3af !important;
+  transition: border-color 0.15s ease;
+}
+
+.upload-form-card :deep(.btn-secondary:hover) {
+  border-color: #ffb366 !important;
+}
+
+.tag-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #9ca3af;
+  background: transparent;
+  color: #6b7280;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.tag-btn:hover:not(:disabled) {
+  border-color: #ffb366;
+  color: #111827;
+}
+
+.bg-bubbles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bg-bubbles li {
+  position: absolute;
+  display: block;
+  width: 40px;
+  height: 40px;
+  background-color: rgba(255, 255, 255, 0.15);
+  bottom: -160px;
+  animation: square 25s infinite;
+  transition-timing-function: linear;
+}
+
+.bg-bubbles li:nth-child(1) {
+  left: 10%;
+}
+
+.bg-bubbles li:nth-child(2) {
+  left: 20%;
+  width: 80px;
+  height: 80px;
+  animation-delay: 2s;
+  animation-duration: 17s;
+}
+
+.bg-bubbles li:nth-child(3) {
+  left: 25%;
+  animation-delay: 4s;
+}
+
+.bg-bubbles li:nth-child(4) {
+  left: 40%;
+  width: 60px;
+  height: 60px;
+  animation-duration: 22s;
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.bg-bubbles li:nth-child(5) {
+  left: 70%;
+}
+
+.bg-bubbles li:nth-child(6) {
+  left: 80%;
+  width: 120px;
+  height: 120px;
+  animation-delay: 3s;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.bg-bubbles li:nth-child(7) {
+  left: 32%;
+  width: 160px;
+  height: 160px;
+  animation-delay: 7s;
+}
+
+.bg-bubbles li:nth-child(8) {
+  left: 55%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 15s;
+  animation-duration: 40s;
+}
+
+.bg-bubbles li:nth-child(9) {
+  left: 25%;
+  width: 10px;
+  height: 10px;
+  animation-delay: 2s;
+  animation-duration: 40s;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.bg-bubbles li:nth-child(10) {
+  left: 90%;
+  width: 160px;
+  height: 160px;
+  animation-delay: 11s;
+}
+
+@keyframes square {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-100vh) rotate(600deg);
+  }
+}
+
+@media (max-width: 768px) {
+  .bg-bubbles li:nth-child(7),
+  .bg-bubbles li:nth-child(10) {
+    width: 100px;
+    height: 100px;
+  }
+
+  .bg-bubbles li:nth-child(6) {
+    width: 80px;
+    height: 80px;
+  }
 }
 </style>

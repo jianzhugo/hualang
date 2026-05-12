@@ -1,5 +1,5 @@
 <template>
-  <nav class="sticky top-0 z-50 h-16 bg-canvas border-b border-hairline">
+  <nav class="sticky top-0 z-50 h-16 border-b border-hairline glass-nav">
     <div class="page-container h-full flex items-center justify-between">
       <button class="md:hidden p-2" @click="mobileOpen = !mobileOpen" :aria-label="mobileOpen ? '关闭菜单' : '打开菜单'">
         <Menu v-if="!mobileOpen" :size="24" />
@@ -56,3 +56,11 @@ const navItems = [
   { label: '关于', to: '/about' }
 ]
 </script>
+
+<style scoped>
+.glass-nav {
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+</style>

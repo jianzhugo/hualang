@@ -1,5 +1,5 @@
 <template>
-  <footer class="bg-canvas border-t border-hairline py-8 px-6">
+  <footer class="glass-footer relative z-10 py-8 px-6">
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
       <router-link to="/" class="text-lg font-semibold text-ink">小小艺境</router-link>
       <div class="flex items-center gap-6 text-sm text-mute">
@@ -16,3 +16,12 @@
 <script setup lang="ts">
 const currentYear = new Date().getFullYear()
 </script>
+
+<style scoped>
+.glass-footer {
+  background-color: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid #e5e7eb;
+}
+</style>

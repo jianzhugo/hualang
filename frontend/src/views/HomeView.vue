@@ -50,39 +50,16 @@
       </div>
     </section>
 
-    <!-- 作者作品滚动展示 -->
+    <!-- 作者作品轮播展示 -->
     <section class="artist-showcase py-16 md:py-section">
       <div class="page-container">
-        <div
-          v-for="authorRow in authorRows"
-          :key="authorRow.name"
-          class="artist-row"
-          :class="{ 'artist-row-reverse': authorRow.isReversed }"
-        >
-          <div v-if="!authorRow.isReversed" class="artist-info">
-            <h3 class="artist-name">{{ authorRow.name }}</h3>
-            <p class="artist-latest-label">最新作品</p>
-          </div>
-          <div class="scroll-track-wrapper" :class="{ 'scroll-track-wrapper-reversed': authorRow.isReversed }">
-            <div class="scroll-track" :style="{ animationDuration: authorRow.duration }" :class="authorRow.direction">
-              <div
-                v-for="(artwork, idx) in authorRow.duplicatedArtworks"
-                :key="`${artwork.key}-${idx}`"
-                class="scroll-item"
-              >
-                <img
-                  :src="artwork.url"
-                  :alt="artwork.title"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-          </div>
-          <div v-if="authorRow.isReversed" class="artist-info">
-            <h3 class="artist-name">{{ authorRow.name }}</h3>
-            <p class="artist-latest-label">最新作品</p>
-          </div>
-        </div>
+        <AuthorCarousel
+          v-for="authorData in carouselAuthors"
+          :key="authorData.name"
+          :author-name="authorData.name"
+          :author-pinyin="authorData.pinyin"
+          :artworks="authorData.artworks"
+        />
       </div>
     </section>
   </main>
@@ -93,6 +70,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import HeroBackground from '../components/HeroBackground.vue'
+import AuthorCarousel from '../components/AuthorCarousel.vue'
 // 作者头像
 import avatarXinxinNew from '../assets/TX-X.jpg'
 import avatarSongbaoNew from '../assets/TX-S.jpg'
@@ -102,6 +80,11 @@ import heroBgImage from '../assets/shangchuan-bg.webp'
 const AUTHOR_AVATARS: Record<string, string> = {
   '馨馨': avatarXinxinNew,
   '松宝': avatarSongbaoNew
+}
+
+const AUTHOR_PINYIN: Record<string, string> = {
+  '馨馨': 'XIN XIN',
+  '松宝': 'SONG BAO'
 }
 
 const getAuthorAvatar = (author: string): string => {
@@ -144,13 +127,10 @@ const authorArtworks = computed(() => {
   return map
 })
 
-interface AuthorRow {
+interface CarouselAuthor {
   name: string
+  pinyin: string
   artworks: ArtworkItem[]
-  duplicatedArtworks: ArtworkItem[]
-  latest: ArtworkItem | null
-  duration: string
-  direction: string
   isReversed: boolean
 }
 
@@ -164,31 +144,18 @@ const bangArtworks = computed<ArtworkItem[]>(() => {
   return bang.slice(0, 4)
 })
 
-const authorRows = computed<AuthorRow[]>(() => {
+const carouselAuthors = computed(() => {
   const targetAuthors = ['馨馨', '松宝']
-  const rows: AuthorRow[] = []
-
-  targetAuthors.forEach((name) => {
+  return targetAuthors.map((name) => {
     const artworks = authorArtworks.value.get(name) || []
-    const latest = artworks.length > 0 ? artworks[0] : null
-    const top5 = artworks.slice(0, 5)
-    const duplicated = [...top5, ...top5]
-    const duration = `${top5.length * 4}s`
-    const isReversed = name === '松宝'
-    const direction = isReversed ? 'scrollRight' : 'scrollLeft'
-
-    rows.push({
+    const topArtworks = artworks.slice(0, 8)
+    return {
       name,
-      artworks: top5,
-      duplicatedArtworks: duplicated,
-      latest,
-      duration,
-      direction,
-      isReversed
-    })
+      pinyin: AUTHOR_PINYIN[name] || name.toUpperCase(),
+      artworks: topArtworks,
+      isReversed: name === '松宝'
+    }
   })
-
-  return rows
 })
 </script>
 
@@ -391,204 +358,6 @@ const authorRows = computed<AuthorRow[]>(() => {
 
   .artwork-card:nth-child(n+3) {
     display: none;
-  }
-}
-
-.artist-showcase {
-  background-color: var(--color-surface-soft);
-}
-
-.artist-row {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  margin-bottom: 40px;
-  padding: 12px;
-  overflow: hidden;
-  border: 2px solid transparent;
-  background: linear-gradient(var(--color-surface-soft), var(--color-surface-soft)) padding-box,
-    linear-gradient(135deg, #ff6b8a, #ffb366, #7ec87e, #66b3e6) border-box;
-  border-radius: 12px;
-}
-
-.artist-row:last-child {
-  margin-bottom: 0;
-}
-
-.artist-row-reverse {
-  background: linear-gradient(var(--color-surface-soft), var(--color-surface-soft)) padding-box,
-    linear-gradient(135deg, #66b3e6, #7ec87e, #ffb366, #ff6b8a) border-box;
-}
-
-.artist-info {
-  flex-shrink: 0;
-  flex-basis: 30%;
-  text-align: center;
-  padding-top: 8px;
-}
-
-.artist-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--color-ink);
-  margin: 0 0 12px;
-  letter-spacing: -0.5px;
-}
-
-.artist-latest-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-mute);
-  margin: 0;
-}
-
-.scroll-track-wrapper {
-  flex: 0 0 70%;
-  overflow: hidden;
-  position: relative;
-}
-
-.scroll-track-wrapper::before,
-.scroll-track-wrapper::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 60px;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.scroll-track-wrapper::before {
-  left: 0;
-  background: linear-gradient(to right, var(--color-surface-soft), transparent);
-}
-
-.scroll-track-wrapper::after {
-  right: 0;
-  background: linear-gradient(to left, var(--color-surface-soft), transparent);
-}
-
-.scroll-track {
-  display: flex;
-  gap: 12px;
-  animation: scrollLeft linear infinite;
-}
-
-.scroll-track:hover {
-  animation-play-state: paused;
-}
-
-.scroll-track.scrollRight {
-  animation: scrollRight linear infinite;
-}
-
-.scroll-track.scrollRight:hover {
-  animation-play-state: paused;
-}
-
-@keyframes scrollLeft {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes scrollRight {
-  0% {
-    transform: translateX(-50%);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-.scroll-track-wrapper-reversed {
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-}
-
-.scroll-track-wrapper-reversed::before {
-  left: auto;
-  right: 0;
-  background: linear-gradient(to left, var(--color-surface-soft), transparent);
-}
-
-.scroll-track-wrapper-reversed::after {
-  right: auto;
-  left: 0;
-  background: linear-gradient(to right, var(--color-surface-soft), transparent);
-}
-
-.scroll-item {
-  flex-shrink: 0;
-  width: 180px;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  position: relative;
-}
-
-.scroll-item:hover {
-  transform: scale(1.08);
-  z-index: 3;
-}
-
-.scroll-track:hover .scroll-item:not(:hover) {
-  opacity: 0.4;
-}
-
-.scroll-item img {
-  width: 100%;
-  aspect-ratio: 1/1;
-  object-fit: cover;
-  border-radius: 12px;
-  display: block;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  will-change: transform;
-}
-
-.scroll-item:hover img {
-  transform: scale(1.05);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-}
-
-.scroll-item-title {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-body);
-  margin: 6px 0 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 768px) {
-  .artist-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .artist-info {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    text-align: left;
-    padding-top: 0;
-  }
-
-  .artist-name {
-    margin: 0;
-    white-space: nowrap;
-  }
-
-  .artist-latest-label {
-    display: none;
-  }
-
-  .scroll-item {
-    width: 140px;
   }
 }
 </style>
