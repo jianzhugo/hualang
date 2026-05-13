@@ -41,6 +41,12 @@ const getAspectRatio = (key: string): string => {
   column-gap: 8px;
 }
 
+@media (max-width: 639px) {
+  .masonry-grid {
+    columns: 2;
+  }
+}
+
 .masonry-item {
   break-inside: avoid;
   margin-bottom: 8px;

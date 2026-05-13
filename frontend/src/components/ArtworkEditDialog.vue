@@ -46,6 +46,30 @@
               />
               <button type="button" class="btn-secondary" @click="addTag">添加</button>
             </div>
+            <div v-if="existingTags.length > 0" class="mb-2">
+              <p class="text-caption-sm text-mute mb-1">已有标签（点击快速添加）：</p>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  v-for="tag in displayedExistingTags"
+                  :key="tag"
+                  type="button"
+                  class="tag-btn"
+                  :class="{ 'opacity-40': editForm.tags.includes(tag) }"
+                  :disabled="editForm.tags.includes(tag)"
+                  @click="addExistingTag(tag)"
+                >
+                  {{ tag }}
+                </button>
+                <button
+                  v-if="existingTags.length > maxVisibleTags"
+                  type="button"
+                  class="px-2 py-0.5 text-caption-sm text-primary hover:underline"
+                  @click="tagsExpanded = !tagsExpanded"
+                >
+                  {{ tagsExpanded ? '收起' : `展开 (${existingTags.length - maxVisibleTags}+)` }}
+                </button>
+              </div>
+            </div>
             <div class="flex flex-wrap gap-2">
               <span
                 v-for="(tag, index) in editForm.tags"
@@ -71,8 +95,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { ArtworkItem } from '../stores/gallery'
+import { useGalleryStore } from '../stores/gallery'
 
 interface Props {
   visible: boolean
@@ -86,6 +111,8 @@ const emit = defineEmits<{
   save: [data: { key: string; title: string; uploader: string; author: string; createdDate: string; tags: string[] }]
 }>()
 
+const galleryStore = useGalleryStore()
+
 const editForm = ref({
   title: '',
   uploader: '',
@@ -95,6 +122,18 @@ const editForm = ref({
 })
 
 const tagInput = ref('')
+const tagsExpanded = ref(false)
+const maxVisibleTags = 8
+
+const existingTags = computed(() => {
+  const allTags = galleryStore.artworks.flatMap((a) => a.tags || [])
+  return [...new Set(allTags)].sort()
+})
+
+const displayedExistingTags = computed(() => {
+  if (tagsExpanded.value) return existingTags.value
+  return existingTags.value.slice(0, maxVisibleTags)
+})
 
 watch(
   () => props.artwork,
@@ -131,6 +170,12 @@ const removeTag = (index: number) => {
   editForm.value.tags.splice(index, 1)
 }
 
+const addExistingTag = (tag: string) => {
+  if (!editForm.value.tags.includes(tag)) {
+    editForm.value.tags.push(tag)
+  }
+}
+
 const save = () => {
   if (!props.artwork) return
   emit('save', {
@@ -144,3 +189,20 @@ const save = () => {
   close()
 }
 </script>
+
+<style scoped>
+.tag-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #9ca3af;
+  background: transparent;
+  color: #6b7280;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.tag-btn:hover:not(:disabled) {
+  border-color: #ffb366;
+  color: #111827;
+}
+</style>

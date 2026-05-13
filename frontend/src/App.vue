@@ -2,7 +2,11 @@
   <div class="min-h-screen flex flex-col bg-canvas">
     <NavBar />
     <div class="flex-1">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive :include="['GalleryView']">
+          <component :is="Component" />
+        </keep-alive>
+      </router-view>
     </div>
     <Footer />
   </div>

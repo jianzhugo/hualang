@@ -345,12 +345,33 @@ const carouselAuthors = computed(() => {
 
 @media (max-width: 768px) {
   .cards-grid {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
     gap: 12px;
+    padding-bottom: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #ff6b8a #f1f1f1;
   }
 
-  .artwork-card:nth-child(n+3) {
-    display: none;
+  .cards-grid::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .cards-grid::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  .cards-grid::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, #ff6b8a, #ffb366);
+    border-radius: 10px;
+  }
+
+  .artwork-card {
+    flex: 0 0 calc(50% - 6px);
+    scroll-snap-align: start;
   }
 }
 </style>

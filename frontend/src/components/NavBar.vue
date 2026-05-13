@@ -60,7 +60,9 @@ const navItems = [
 <style scoped>
 .glass-nav {
   background-color: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateZ(0);
+  will-change: transform;
 }
 </style>

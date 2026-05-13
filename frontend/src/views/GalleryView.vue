@@ -15,7 +15,7 @@
         <SortDropdown v-model="sortOrder" />
       </div>
 
-      <div class="gallery-toolbar-center">
+      <div ref="toolbarRef" class="gallery-toolbar-center">
         <div class="gallery-chips">
           <button
             v-for="author in authors"
@@ -28,7 +28,7 @@
           </button>
         </div>
         <div class="gallery-chip-divider" />
-        <div class="gallery-chips-wrapper" :class="{ 'gallery-chips-wrapper-collapsed': tagsCollapsed && visibleTags.length < allTags.length }">
+        <div class="gallery-chips-wrapper">
           <div class="gallery-chips">
             <button
               v-for="tag in visibleTags"
@@ -40,15 +40,26 @@
               {{ tag }}
             </button>
           </div>
-          <button
-            v-if="visibleTags.length < allTags.length"
-            class="gallery-chips-toggle"
-            @click="tagsCollapsed = !tagsCollapsed"
-          >
-            <ChevronDown v-if="tagsCollapsed" class="gallery-chips-toggle-icon" />
-            <ChevronUp v-else class="gallery-chips-toggle-icon" />
-            <span>{{ tagsCollapsed ? `+${allTags.length - visibleTags.length}` : '收起' }}</span>
-          </button>
+          <div v-if="hiddenTags.length > 0" class="gallery-chips-dropdown-wrap">
+            <button
+              class="gallery-chips-toggle"
+              @click.stop="showTagsDropdown = !showTagsDropdown"
+            >
+              <ChevronDown class="gallery-chips-toggle-icon" :class="{ 'gallery-chips-toggle-icon-open': showTagsDropdown }" />
+              <span>+{{ hiddenTags.length }}</span>
+            </button>
+            <div v-if="showTagsDropdown" class="gallery-chips-dropdown">
+              <button
+                v-for="tag in hiddenTags"
+                :key="tag"
+                class="gallery-chip"
+                :class="{ 'gallery-chip-active': selectedTags.includes(tag) }"
+                @click="toggleTag(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -140,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import MasonryGrid from '../components/MasonryGrid.vue'
@@ -151,9 +162,9 @@ import ArtworkEditDialog from '../components/ArtworkEditDialog.vue'
 import SortDropdown from '../components/SortDropdown.vue'
 import FilterButton from '../components/FilterButton.vue'
 import FilterPanel from '../components/FilterPanel.vue'
-import { ChevronDown, ChevronUp } from 'lucide-vue-next'
+import { ChevronDown } from 'lucide-vue-next'
 
-const MAX_VISIBLE_TAGS = 8
+const maxVisibleTags = ref(99)
 
 const galleryStore = useGalleryStore()
 const sortOrder = ref('uploadDate-desc')
@@ -165,7 +176,7 @@ const selectedUploaders = ref<string[]>([])
 const selectedTags = ref<string[]>([])
 const selectedAuthors = ref<string[]>([])
 const filterOpen = ref(false)
-const tagsCollapsed = ref(true)
+const showTagsDropdown = ref(false)
 const lightboxVisible = ref(false)
 const lightboxIndex = ref(0)
 const editDialogVisible = ref(false)
@@ -176,6 +187,51 @@ const showEditAuth = ref(false)
 const editPassword = ref('')
 const editPasswordError = ref('')
 const pendingEditArtwork = ref<ArtworkItem | null>(null)
+const toolbarRef = ref<HTMLElement>()
+let resizeObserver: ResizeObserver | null = null
+
+const recalcVisibleTags = () => {
+  if (!toolbarRef.value) return
+
+  nextTick(() => {
+    const toolbar = toolbarRef.value!
+    const toolbarWidth = toolbar.clientWidth
+
+    const authorSection = toolbar.querySelector<HTMLElement>('.gallery-chips:first-child')
+    const authorWidth = authorSection?.scrollWidth || 0
+
+    const divider = toolbar.querySelector<HTMLElement>('.gallery-chip-divider')
+    const dividerWidth = divider ? divider.offsetWidth + 16 : 17
+
+    const toggleReserve = allTags.value.length > 3 ? 56 : 0
+
+    const maxAvail = toolbarWidth - authorWidth - dividerWidth - toggleReserve - 24
+    if (maxAvail < 0) {
+      maxVisibleTags.value = Math.max(2, Math.floor(toolbarWidth / 80))
+      return
+    }
+
+    const chips = toolbar.querySelectorAll<HTMLElement>('.gallery-chips-wrapper .gallery-chips .gallery-chip')
+    if (chips.length === 0) return
+
+    let used = 0
+    let count = 0
+    const gap = 8
+
+    for (const chip of chips) {
+      const w = chip.offsetWidth + (count > 0 ? gap : 0)
+      if (used + w > maxAvail) break
+      used += w
+      count++
+    }
+
+    if (count >= allTags.value.length) {
+      maxVisibleTags.value = allTags.value.length
+    } else {
+      maxVisibleTags.value = Math.max(2, count)
+    }
+  })
+}
 
 const authors = computed(() => {
   return [...new Set(galleryStore.artworks.map((a) => a.author).filter(Boolean))]
@@ -186,10 +242,11 @@ const allTags = computed(() => {
 })
 
 const visibleTags = computed(() => {
-  if (!tagsCollapsed.value) {
-    return allTags.value
-  }
-  return allTags.value.slice(0, MAX_VISIBLE_TAGS)
+  return allTags.value.slice(0, maxVisibleTags.value)
+})
+
+const hiddenTags = computed(() => {
+  return allTags.value.slice(maxVisibleTags.value)
 })
 
 const uploaders = computed(() => {
@@ -352,7 +409,25 @@ const handleSync = async () => {
   }
 }
 
+const closeTagsDropdown = (e: MouseEvent) => {
+  const target = e.target as HTMLElement
+  if (!target.closest('.gallery-chips-dropdown-wrap')) {
+    showTagsDropdown.value = false
+  }
+}
+
 onMounted(() => {
   galleryStore.fetchGallery()
+  document.addEventListener('click', closeTagsDropdown)
+  recalcVisibleTags()
+  if (toolbarRef.value) {
+    resizeObserver = new ResizeObserver(() => recalcVisibleTags())
+    resizeObserver.observe(toolbarRef.value)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeTagsDropdown)
+  resizeObserver?.disconnect()
 })
 </script>

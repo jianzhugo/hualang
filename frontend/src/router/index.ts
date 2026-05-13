@@ -8,7 +8,12 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
-    { path: '/gallery', name: 'gallery', component: GalleryView },
+    {
+      path: '/gallery',
+      name: 'gallery',
+      component: GalleryView,
+      meta: { keepAlive: true }
+    },
     { path: '/upload', name: 'upload', component: UploadView },
     { path: '/about', name: 'about', component: AboutView }
   ]
