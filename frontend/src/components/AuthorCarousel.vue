@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import type { ArtworkItem } from '../stores/gallery'
 
 interface Props {
@@ -369,6 +369,44 @@ function goToReal(realIndex: number) {
 let resizeObserver: ResizeObserver | null = null
 let mql: MediaQueryList | null = null
 let mqlHandler: ((e: MediaQueryListEvent) => void) | null = null
+let carouselReady = false
+
+function setupCarousel() {
+  if (carouselReady) return
+  if (!carouselRef.value || props.artworks.length < 3) return
+
+  carouselReady = true
+
+  carouselRef.value.style.cursor = 'grab'
+
+  const measure = () => {
+    if (carouselRef.value) {
+      containerWidth.value = carouselRef.value.clientWidth
+    }
+  }
+  measure()
+
+  resizeObserver = new ResizeObserver(() => {
+    measure()
+    if (!inDragMode.value) {
+      stopAnim()
+      nextTick(() => startAnim())
+    }
+  })
+  resizeObserver.observe(carouselRef.value)
+
+  focusModulo.value = 0
+  startAnim()
+  requestAnimationFrame(() => startSync())
+}
+
+function teardownCarousel() {
+  resizeObserver?.disconnect()
+  resizeObserver = null
+  stopAnim()
+  stopSync()
+  carouselReady = false
+}
 
 onMounted(() => {
   mql = window.matchMedia(`(max-width: ${MOBILE_BP - 1}px)`)
@@ -376,45 +414,29 @@ onMounted(() => {
 
   mqlHandler = () => {
     isMobile.value = mql!.matches
-    nextTick(() => {
-      focusModulo.value = 0
-      startAnim()
-    })
+    if (carouselReady) {
+      nextTick(() => {
+        focusModulo.value = 0
+        startAnim()
+      })
+    }
   }
   mql.addEventListener('change', mqlHandler)
 
   nextTick(() => {
-    if (carouselRef.value) {
-      carouselRef.value.style.cursor = 'grab'
+    setupCarousel()
+  })
+})
 
-      const measure = () => {
-        if (carouselRef.value) {
-          containerWidth.value = carouselRef.value.clientWidth
-        }
-      }
-      measure()
-
-      resizeObserver = new ResizeObserver(() => {
-        measure()
-        if (!inDragMode.value) {
-          stopAnim()
-          nextTick(() => startAnim())
-        }
-      })
-      resizeObserver.observe(carouselRef.value)
-    }
-
-    focusModulo.value = 0
-    startAnim()
-    requestAnimationFrame(() => startSync())
+watch(() => props.artworks.length, () => {
+  nextTick(() => {
+    setupCarousel()
   })
 })
 
 onBeforeUnmount(() => {
   if (mql && mqlHandler) mql.removeEventListener('change', mqlHandler)
-  resizeObserver?.disconnect()
-  stopAnim()
-  stopSync()
+  teardownCarousel()
 })
 </script>
 

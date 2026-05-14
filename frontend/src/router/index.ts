@@ -6,6 +6,9 @@ import AboutView from '../views/AboutView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior() {
+    return { top: 0, left: 0 }
+  },
   routes: [
     { path: '/', name: 'home', component: HomeView },
     {

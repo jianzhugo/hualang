@@ -151,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import MasonryGrid from '../components/MasonryGrid.vue'
@@ -424,6 +424,10 @@ onMounted(() => {
     resizeObserver = new ResizeObserver(() => recalcVisibleTags())
     resizeObserver.observe(toolbarRef.value)
   }
+})
+
+watch(allTags, () => {
+  nextTick(() => recalcVisibleTags())
 })
 
 onUnmounted(() => {
