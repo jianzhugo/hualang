@@ -5,7 +5,6 @@
       <p class="carousel-author-pinyin">{{ authorPinyin }}</p>
     </div>
 
-    <!-- 作品不足 3 张：静态展示 -->
     <div v-if="artworks.length < 3" class="static-row">
       <div
         v-for="item in artworks"
@@ -17,7 +16,6 @@
       </div>
     </div>
 
-    <!-- 作品 >= 3 张：轮播 -->
     <div
       v-else
       class="carousel-wrapper"
@@ -36,14 +34,25 @@
         :style="trackStyle"
       >
         <div
-          v-for="(item, index) in loopItems"
-          :key="`${item.key}-${index}`"
+          v-for="(item, idx) in loopItems"
+          :key="`${item.key}-${idx}`"
           class="carousel-slide"
-          :style="getSlideStyle(index)"
+          :style="{ width: cardWidth + 'px' }"
         >
           <img :src="item.url" :alt="item.title" loading="lazy" />
         </div>
       </div>
+    </div>
+
+    <div class="carousel-dots" v-if="artworks.length >= 3">
+      <button
+        v-for="(_, i) in setCount"
+        :key="i"
+        class="carousel-dot"
+        :class="{ active: i === focusModulo }"
+        :aria-label="`第 ${i + 1} 张`"
+        @click="goToReal(i)"
+      />
     </div>
   </div>
 </template>
@@ -57,150 +66,230 @@ interface Props {
   authorPinyin: string
   artworks: ArtworkItem[]
 }
-
 const props = defineProps<Props>()
 
 const carouselRef = ref<HTMLElement>()
 const trackRef = ref<HTMLElement>()
 const containerWidth = ref(0)
-const isPlaying = ref(true)
-const isDragging = ref(false)
-const startPos = ref(0)
-const dragTranslate = ref(0)
-const isJumping = ref(false)
 
-const AUTOPLAY_INTERVAL = 3000
-const TRANSITION_MS = 500
+const SCROLL_TIME_S = 0.5
+const DISPLAY_TIME_S = 2.5
 const MOBILE_BP = 768
-
-// ---------- 响应式 ----------
 
 const isMobile = ref(false)
 const visibleCount = computed(() => isMobile.value ? 3 : 5)
-const cardGap = computed(() => isMobile.value ? 12 : 16)
-
-// ---------- 数据：复制 2 份 ----------
-
-const setCount = computed(() => props.artworks.length)
-const loopItems = computed(() => {
-  if (setCount.value === 0) return []
-  return [...props.artworks, ...props.artworks]
-})
-const totalItems = computed(() => loopItems.value.length)
-
-// ---------- 尺寸 ----------
+const safeLeft = computed(() => Math.floor(visibleCount.value / 2))
 
 const cardWidth = computed(() => {
   const w = containerWidth.value || 1200
-  return w / visibleCount.value
+  const gaps = (visibleCount.value - 1) * cardGap.value
+  return (w - gaps) / visibleCount.value
 })
-
+const cardGap = computed(() => isMobile.value ? 12 : 16)
 const step = computed(() => cardWidth.value + cardGap.value)
 
-// ---------- 位置 ----------
-// pos: 当前聚焦在 loopItems 中的索引，范围 [0, 2*setCount-1]
-// 播放策略：从 setCount 开始（第一份末尾/第二份开头），向右播到 2*setCount-1 后
-// 静默跳回 setCount（因为 DOM[setCount] 和 DOM[0] 是同一张图）
+// ---- 数据 ----
+const setCount = computed(() => props.artworks.length)
 
-const pos = ref(0)
-
-const trackStyle = computed(() => {
-  const center = containerWidth.value / 2 - cardWidth.value / 2
-  const base = -pos.value * step.value
-  const tx = center + base + dragTranslate.value
-  return {
-    transform: `translateX(${tx}px)`,
-    transition: isJumping.value || isDragging.value
-      ? 'none'
-      : `transform ${TRANSITION_MS}ms cubic-bezier(0.25, 0.1, 0.25, 1)`
+const loopItems = computed(() => {
+  if (setCount.value === 0) return []
+  const items: ArtworkItem[] = []
+  for (let c = 0; c < 2; c++) {
+    items.push(...props.artworks)
   }
+  return items
 })
 
-// ---------- 卡片样式 ----------
+// ---- 时间参数 ----
+const totalDurationMs = computed(() =>
+  (DISPLAY_TIME_S + SCROLL_TIME_S) * setCount.value * 1000
+)
+const stepDurationMs = computed(() =>
+  (DISPLAY_TIME_S + SCROLL_TIME_S) * 1000
+)
+const displayMs = DISPLAY_TIME_S * 1000
+const scrollMs = SCROLL_TIME_S * 1000
 
-function getSlideStyle(index: number) {
-  const distance = Math.abs(index - pos.value)
-  const scale = distance === 0 ? 1.08 : Math.max(0.55, 1 - distance * 0.14)
-  const opacity = distance === 0 ? 1 : Math.max(0.3, 1 - distance * 0.18)
-  const zIndex = Math.max(1, 20 - distance)
-  return {
-    transform: `scale(${scale})`,
-    opacity,
-    zIndex,
-    width: `${cardWidth.value}px`
+// ---- 焦点指示器 ----
+const focusModulo = ref(0)
+
+// ---- 拖拽状态 ----
+const isDragging = ref(false)
+const dragStartX = ref(0)
+const dragOffsetX = ref(0)
+const inDragMode = ref(false)
+
+// ---- 轨道样式（仅 gap + 拖拽 transform，不再含 animation） ----
+const trackStyle = computed(() => {
+  const base: Record<string, string> = {
+    gap: `${cardGap.value}px`
   }
+
+  if (inDragMode.value) {
+    const center = (containerWidth.value || 1200) / 2 - cardWidth.value / 2
+    base.transform = `translateX(${center - dragOffsetX.value}px)`
+  }
+
+  return base
+})
+
+// ====================================================================
+//  WAAPI 动画引擎 — 完全替代 CSS @keyframes，零注入，零时序问题
+// ====================================================================
+let anim: Animation | null = null
+
+function buildKeyframes(): Keyframe[] {
+  const n = setCount.value
+  const s = step.value
+  const center = (containerWidth.value || 1200) / 2 - cardWidth.value / 2
+  const total = totalDurationMs.value
+
+  const kfs: Keyframe[] = []
+  let t = 0
+
+  for (let i = 0; i < n; i++) {
+    const pos = safeLeft.value + i
+    const tx = center - pos * s
+
+    // 停留阶段
+    if (i === 0) {
+      kfs.push({ transform: `translateX(${tx.toFixed(1)}px)`, offset: 0 })
+    }
+    t += displayMs
+    kfs.push({ transform: `translateX(${tx.toFixed(1)}px)`, offset: Math.min(t / total, 1) })
+
+    // 滚动阶段 → 下一位置（最后一个到 safeLeft+n，视觉 = safeLeft）
+    const nextTx = center - (safeLeft.value + i + 1) * s
+    t += scrollMs
+    kfs.push({ transform: `translateX(${nextTx.toFixed(1)}px)`, offset: Math.min(t / total, 1) })
+  }
+
+  return kfs
 }
 
-function applyStyles() {
-  const slides = trackRef.value?.querySelectorAll('.carousel-slide')
-  slides?.forEach((slide, index) => {
-    const distance = Math.abs(index - pos.value)
-    const scale = distance === 0 ? 1.08 : Math.max(0.55, 1 - distance * 0.14)
-    const opacity = distance === 0 ? 1 : Math.max(0.3, 1 - distance * 0.18)
-    const zIndex = Math.max(1, 20 - distance)
-    const el = slide as HTMLElement
-    el.style.transform = `scale(${scale})`
-    el.style.opacity = opacity.toString()
-    el.style.zIndex = zIndex.toString()
+function startAnim() {
+  stopAnim()
+  const track = trackRef.value
+  if (!track) return
+
+  const kfs = buildKeyframes()
+  if (kfs.length === 0) return
+
+  anim = track.animate(kfs, {
+    duration: totalDurationMs.value,
+    iterations: Infinity,
+    easing: 'linear'
   })
 }
 
-// ---------- 播放 ----------
-
-function goTo(target: number) {
-  pos.value = target
-  applyStyles()
-}
-
-function moveNext() {
-  const next = pos.value + 1
-
-  if (next >= totalItems.value) {
-    // 到达末尾，静默跳回 setCount（同一张图）
-    silentJump(setCount.value)
-  } else {
-    goTo(next)
+function stopAnim() {
+  if (anim) {
+    anim.cancel()
+    anim = null
   }
 }
 
-function movePrev() {
-  if (pos.value > 0) {
-    goTo(pos.value - 1)
+// ====================================================================
+//  焦点计算（与 WAAPI 关键帧时序精确一致）
+// ====================================================================
+function computeVisualFocus(currentTime: number): number {
+  const totalMs = totalDurationMs.value || 1
+  const stepMs = stepDurationMs.value || 1
+
+  const t = ((currentTime % totalMs) + totalMs) % totalMs
+  const stepIndex = Math.min(Math.floor(t / stepMs), setCount.value - 1)
+  const stepTime = t - stepIndex * stepMs
+
+  if (stepTime < displayMs) {
+    return safeLeft.value + stepIndex
   }
+  const progress = Math.min((stepTime - displayMs) / scrollMs, 1)
+  return safeLeft.value + stepIndex + progress
 }
 
-function silentJump(targetPos: number) {
-  isJumping.value = true
-  pos.value = targetPos
-  applyStyles()
+// ====================================================================
+//  rAF 同步：每帧更新卡片样式（scale + Figma 风格 translateX 靠拢偏移）
+// ====================================================================
+let syncRafId = 0
 
-  // 双 rAF 确保浏览器完成无过渡渲染后再恢复
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      isJumping.value = false
-    })
+function updateSlideStyles(visualFocus: number) {
+  const track = trackRef.value
+  if (!track) return
+
+  // Figma 的偏移常数：基于卡片宽度的比例
+  //   scale(1) → translateX(0)
+  //   scale(0.8) → translateX(±1.625rem ≈ ±0.3 × cardWidth)
+  //   scale(0.7) → translateX(±6.875rem ≈ ±1.25 × cardWidth)
+  const cw = cardWidth.value
+  const nearOffset = cw * 0.3   // 相邻卡片向中心靠拢的量
+  const farOffset = cw * 0.85   // 远处卡片向中心靠拢的量
+
+  const slides = track.querySelectorAll<HTMLElement>('.carousel-slide')
+  slides.forEach((slide, idx) => {
+    const rawDist = idx - visualFocus
+    const absDist = Math.abs(rawDist)
+    const sign = rawDist < 0 ? -1 : rawDist > 0 ? 1 : 0
+
+    // scale：中心 1.08，按距离递减
+    const scale = absDist < 0.5 ? 1.08
+      : absDist < 1.5 ? 0.85
+      : Math.max(0.55, 1 - absDist * 0.14)
+    const opacity = absDist < 0.5 ? 1
+      : absDist < 1.5 ? 0.75
+      : Math.max(0.25, 1 - absDist * 0.2)
+    const z = Math.max(1, Math.floor(20 - absDist))
+
+    // translateX：向中心靠拢（Figma 核心效果）
+    let tx = 0
+    if (absDist > 0) {
+      if (absDist < 1.5) {
+        tx = sign * nearOffset * absDist
+      } else {
+        tx = sign * (nearOffset * 1 + farOffset * (absDist - 1))
+      }
+    }
+
+    slide.style.transform = `translateX(${tx}px) scale(${scale})`
+    slide.style.opacity = String(opacity)
+    slide.style.zIndex = String(z)
   })
 }
 
-// ---------- 拖拽 ----------
+function startSync() {
+  stopSync()
 
-function snapToNearest() {
-  const snapped = Math.round(-dragTranslate.value / step.value)
-  dragTranslate.value = 0
+  function tick() {
+    if (inDragMode.value) {
+      syncRafId = requestAnimationFrame(tick)
+      return
+    }
 
-  let target = pos.value + snapped
+    if (anim && anim.currentTime !== null) {
+      const timeMs = typeof anim.currentTime === 'number' ? anim.currentTime : Number(anim.currentTime.toString())
+      const visualFocus = computeVisualFocus(timeMs)
+      const mod = Math.round(visualFocus) % setCount.value
+      if (mod !== focusModulo.value) {
+        focusModulo.value = mod
+      }
+      updateSlideStyles(visualFocus)
+    } else {
+      updateSlideStyles(safeLeft.value)
+    }
 
-  // 边界处理
-  if (target < 0) target = 0
-  if (target >= totalItems.value) target = totalItems.value - 1
-
-  // 如果目标在"跳回区"（第一份数据），直接跳转到第二份的等价位置
-  if (target < setCount.value) {
-    target += setCount.value
+    syncRafId = requestAnimationFrame(tick)
   }
 
-  goTo(target)
+  syncRafId = requestAnimationFrame(tick)
 }
+
+function stopSync() {
+  if (syncRafId) {
+    cancelAnimationFrame(syncRafId)
+    syncRafId = 0
+  }
+}
+
+// ---- 拖拽 ----
 
 function getClientX(e: MouseEvent | TouchEvent): number {
   if ('touches' in e) return e.touches[0].clientX
@@ -209,59 +298,73 @@ function getClientX(e: MouseEvent | TouchEvent): number {
 
 function onDragStart(e: MouseEvent | TouchEvent) {
   isDragging.value = true
-  startPos.value = getClientX(e)
-  dragTranslate.value = 0
+  dragStartX.value = getClientX(e)
+
+  // 从 WAAPI 读取当前视觉偏移
+  if (anim && anim.currentTime !== null) {
+    anim.pause()
+    anim.commitStyles()
+    const timeMs = typeof anim.currentTime === 'number' ? anim.currentTime : Number(anim.currentTime.toString())
+    dragOffsetX.value = computeVisualFocus(timeMs) * step.value
+  } else {
+    dragOffsetX.value = safeLeft.value * step.value
+  }
+
+  inDragMode.value = true
   if (carouselRef.value) carouselRef.value.style.cursor = 'grabbing'
-  stopAutoplay()
 }
 
 function onDragMove(e: MouseEvent | TouchEvent) {
   if (!isDragging.value) return
-  const currentX = getClientX(e)
-  dragTranslate.value = currentX - startPos.value
 
-  const virtualPos = pos.value - dragTranslate.value / step.value
+  const delta = getClientX(e) - dragStartX.value
+  const newVisualFocus = dragOffsetX.value / step.value - delta / step.value
+  dragOffsetX.value = newVisualFocus * step.value
 
-  const slides = trackRef.value?.querySelectorAll('.carousel-slide')
-  slides?.forEach((slide, index) => {
-    const distance = Math.abs(index - virtualPos)
-    const scale = distance === 0 ? 1.08 : Math.max(0.55, 1 - distance * 0.14)
-    const opacity = distance === 0 ? 1 : Math.max(0.3, 1 - distance * 0.18)
-    const el = slide as HTMLElement
-    el.style.transform = `scale(${scale})`
-    el.style.opacity = opacity.toString()
-  })
+  updateSlideStyles(newVisualFocus)
 }
 
 function onDragEnd(_e: MouseEvent | TouchEvent) {
   if (!isDragging.value) return
   isDragging.value = false
   if (carouselRef.value) carouselRef.value.style.cursor = 'grab'
-  snapToNearest()
-  if (isPlaying.value) startAutoplay()
+
+  const visualFocus = dragOffsetX.value / step.value
+  const clamped = Math.max(
+    safeLeft.value,
+    Math.min(Math.round(visualFocus), setCount.value + safeLeft.value - 1)
+  )
+
+  dragOffsetX.value = 0
+  inDragMode.value = false
+
+  const targetStep = clamped - safeLeft.value
+
+  if (anim) {
+    anim.currentTime = (targetStep * stepDurationMs.value + displayMs / 2) as CSSNumberish
+    anim.play()
+  } else {
+    startAnim()
+  }
+
+  focusModulo.value = clamped % setCount.value
 }
 
-// ---------- 自动播放 ----------
+// ---- 点击指示器 ----
 
-let autoplayTimer: ReturnType<typeof setInterval> | null = null
+function goToReal(realIndex: number) {
+  focusModulo.value = realIndex
 
-function startAutoplay() {
-  stopAutoplay()
-  autoplayTimer = setInterval(() => {
-    if (isPlaying.value && !isDragging.value && !isJumping.value) {
-      moveNext()
-    }
-  }, AUTOPLAY_INTERVAL)
-}
-
-function stopAutoplay() {
-  if (autoplayTimer) {
-    clearInterval(autoplayTimer)
-    autoplayTimer = null
+  if (!anim) {
+    startAnim()
+  }
+  if (anim) {
+    anim.currentTime = (realIndex * stepDurationMs.value + displayMs / 2) as CSSNumberish
+    anim.play()
   }
 }
 
-// ---------- 生命周期 ----------
+// ---- 生命周期 ----
 
 let resizeObserver: ResizeObserver | null = null
 let mql: MediaQueryList | null = null
@@ -273,32 +376,45 @@ onMounted(() => {
 
   mqlHandler = () => {
     isMobile.value = mql!.matches
-    applyStyles()
+    nextTick(() => {
+      focusModulo.value = 0
+      startAnim()
+    })
   }
   mql.addEventListener('change', mqlHandler)
 
   nextTick(() => {
     if (carouselRef.value) {
       carouselRef.value.style.cursor = 'grab'
-      const update = () => {
-        if (carouselRef.value) containerWidth.value = carouselRef.value.clientWidth
+
+      const measure = () => {
+        if (carouselRef.value) {
+          containerWidth.value = carouselRef.value.clientWidth
+        }
       }
-      update()
-      resizeObserver = new ResizeObserver(update)
+      measure()
+
+      resizeObserver = new ResizeObserver(() => {
+        measure()
+        if (!inDragMode.value) {
+          stopAnim()
+          nextTick(() => startAnim())
+        }
+      })
       resizeObserver.observe(carouselRef.value)
     }
 
-    // 从第二份数据开始（索引 = setCount）
-    pos.value = setCount.value
-    applyStyles()
-    startAutoplay()
+    focusModulo.value = 0
+    startAnim()
+    requestAnimationFrame(() => startSync())
   })
 })
 
 onBeforeUnmount(() => {
   if (mql && mqlHandler) mql.removeEventListener('change', mqlHandler)
   resizeObserver?.disconnect()
-  stopAutoplay()
+  stopAnim()
+  stopSync()
 })
 </script>
 
@@ -329,7 +445,6 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 
-/* === 静态行（< 3 张）=== */
 .static-row {
   display: flex;
   gap: 16px;
@@ -348,7 +463,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-/* === 轮播 === */
 .carousel-wrapper {
   overflow: hidden;
   position: relative;
@@ -367,8 +481,6 @@ onBeforeUnmount(() => {
 }
 .carousel-slide {
   flex-shrink: 0;
-  transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
-              opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: transform, opacity;
   transform-origin: center center;
 }
@@ -380,6 +492,33 @@ onBeforeUnmount(() => {
   display: block;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   pointer-events: none;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+.carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: #d1d5db;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+.carousel-dot.active {
+  background: var(--color-ink, #111827);
+  transform: scale(1.4);
+}
+.carousel-dot:hover {
+  background: #9ca3af;
+}
+.carousel-dot.active:hover {
+  background: var(--color-ink, #111827);
 }
 
 @media (max-width: 768px) {
@@ -394,6 +533,9 @@ onBeforeUnmount(() => {
   }
   .carousel-wrapper {
     padding: 24px 0;
+  }
+  .carousel-dots {
+    margin-top: 16px;
   }
 }
 </style>
