@@ -151,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import MasonryGrid from '../components/MasonryGrid.vue'
@@ -193,6 +193,8 @@ let resizeObserver: ResizeObserver | null = null
 const recalcVisibleTags = () => {
   if (!toolbarRef.value) return
 
+  maxVisibleTags.value = 99
+
   nextTick(() => {
     const toolbar = toolbarRef.value!
     const toolbarWidth = toolbar.clientWidth
@@ -203,7 +205,7 @@ const recalcVisibleTags = () => {
     const divider = toolbar.querySelector<HTMLElement>('.gallery-chip-divider')
     const dividerWidth = divider ? divider.offsetWidth + 16 : 17
 
-    const toggleReserve = allTags.value.length > 3 ? 56 : 0
+    const toggleReserve = 56
 
     const maxAvail = toolbarWidth - authorWidth - dividerWidth - toggleReserve - 24
     if (maxAvail < 0) {
@@ -430,8 +432,19 @@ watch(allTags, () => {
   nextTick(() => recalcVisibleTags())
 })
 
+onActivated(() => {
+  nextTick(() => {
+    recalcVisibleTags()
+    if (toolbarRef.value && !resizeObserver) {
+      resizeObserver = new ResizeObserver(() => recalcVisibleTags())
+      resizeObserver.observe(toolbarRef.value)
+    }
+  })
+})
+
 onUnmounted(() => {
   document.removeEventListener('click', closeTagsDropdown)
   resizeObserver?.disconnect()
+  resizeObserver = null
 })
 </script>

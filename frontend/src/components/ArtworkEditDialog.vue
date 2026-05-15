@@ -19,14 +19,48 @@
             <input v-model="editForm.title" type="text" class="text-input" />
           </div>
 
-          <div>
+          <div class="edit-dropdown-wrapper">
             <label class="block text-body-sm font-semibold text-ink mb-2">上传者</label>
-            <input v-model="editForm.uploader" type="text" class="text-input" />
+            <input
+              v-model="editForm.uploader"
+              type="text"
+              class="text-input"
+              @focus="showUploaderDropdown = true"
+              @input="showUploaderDropdown = true"
+              @blur="handleUploaderBlur"
+            />
+            <ul v-if="showUploaderDropdown && filteredUploaders.length > 0" class="edit-dropdown-list">
+              <li
+                v-for="uploader in filteredUploaders"
+                :key="uploader"
+                class="edit-dropdown-item"
+                @mousedown.prevent="selectUploader(uploader)"
+              >
+                {{ uploader }}
+              </li>
+            </ul>
           </div>
 
-          <div>
+          <div class="edit-dropdown-wrapper">
             <label class="block text-body-sm font-semibold text-ink mb-2">作品作者</label>
-            <input v-model="editForm.author" type="text" class="text-input" />
+            <input
+              v-model="editForm.author"
+              type="text"
+              class="text-input"
+              @focus="showAuthorDropdown = true"
+              @input="showAuthorDropdown = true"
+              @blur="handleAuthorBlur"
+            />
+            <ul v-if="showAuthorDropdown && filteredAuthors.length > 0" class="edit-dropdown-list">
+              <li
+                v-for="author in filteredAuthors"
+                :key="author"
+                class="edit-dropdown-item"
+                @mousedown.prevent="selectAuthor(author)"
+              >
+                {{ author }}
+              </li>
+            </ul>
           </div>
 
           <div>
@@ -125,6 +159,11 @@ const tagInput = ref('')
 const tagsExpanded = ref(false)
 const maxVisibleTags = 8
 
+const showUploaderDropdown = ref(false)
+const showAuthorDropdown = ref(false)
+const uploaderDropdownRef = ref<HTMLElement>()
+const authorDropdownRef = ref<HTMLElement>()
+
 const existingTags = computed(() => {
   const allTags = galleryStore.artworks.flatMap((a) => a.tags || [])
   return [...new Set(allTags)].sort()
@@ -134,6 +173,44 @@ const displayedExistingTags = computed(() => {
   if (tagsExpanded.value) return existingTags.value
   return existingTags.value.slice(0, maxVisibleTags)
 })
+
+const existingUploaders = computed(() => {
+  return [...new Set(galleryStore.artworks.map((a) => a.uploader).filter(Boolean))].sort()
+})
+
+const existingAuthors = computed(() => {
+  return [...new Set(galleryStore.artworks.map((a) => a.author).filter(Boolean))].sort()
+})
+
+const filteredUploaders = computed(() => {
+  const q = editForm.value.uploader.trim().toLowerCase()
+  if (!q) return existingUploaders.value
+  return existingUploaders.value.filter((u) => u.toLowerCase().includes(q))
+})
+
+const filteredAuthors = computed(() => {
+  const q = editForm.value.author.trim().toLowerCase()
+  if (!q) return existingAuthors.value
+  return existingAuthors.value.filter((a) => a.toLowerCase().includes(q))
+})
+
+const selectUploader = (value: string) => {
+  editForm.value.uploader = value
+  showUploaderDropdown.value = false
+}
+
+const selectAuthor = (value: string) => {
+  editForm.value.author = value
+  showAuthorDropdown.value = false
+}
+
+const handleUploaderBlur = () => {
+  setTimeout(() => { showUploaderDropdown.value = false }, 150)
+}
+
+const handleAuthorBlur = () => {
+  setTimeout(() => { showAuthorDropdown.value = false }, 150)
+}
 
 watch(
   () => props.artwork,
@@ -191,6 +268,39 @@ const save = () => {
 </script>
 
 <style scoped>
+.edit-dropdown-wrapper {
+  position: relative;
+}
+
+.edit-dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin-top: 2px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.edit-dropdown-item {
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.edit-dropdown-item:hover {
+  background: #f3f4f6;
+}
+
 .tag-btn {
   padding: 4px 8px;
   font-size: 12px;
