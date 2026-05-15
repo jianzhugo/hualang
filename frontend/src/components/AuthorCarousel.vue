@@ -156,7 +156,6 @@ function getSlideStyle(index: number): Record<string, string> {
   }
 
   const step = stepPx.value
-  const cw = cardWidthPx.value
 
   let translateX: number
   let scale: number

@@ -161,8 +161,6 @@ const maxVisibleTags = 8
 
 const showUploaderDropdown = ref(false)
 const showAuthorDropdown = ref(false)
-const uploaderDropdownRef = ref<HTMLElement>()
-const authorDropdownRef = ref<HTMLElement>()
 
 const existingTags = computed(() => {
   const allTags = galleryStore.artworks.flatMap((a) => a.tags || [])
