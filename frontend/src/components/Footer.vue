@@ -19,9 +19,9 @@ const currentYear = new Date().getFullYear()
 
 <style scoped>
 .glass-footer {
-  background-color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(18, 18, 18, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
 }
 </style>

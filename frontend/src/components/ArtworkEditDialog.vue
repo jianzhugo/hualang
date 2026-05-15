@@ -5,10 +5,10 @@
       class="fixed inset-0 z-50 flex items-center justify-center"
       @click="handleBackdropClick"
     >
-      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="absolute inset-0 bg-black/70"></div>
 
       <div
-        class="relative z-10 w-full max-w-xl min-w-[320px] mx-4 bg-white rounded-lg p-6"
+        class="edit-dialog-card relative z-10 w-full max-w-xl min-w-[320px] mx-4 rounded-lg p-6"
         @click.stop
       >
         <h2 class="text-heading-lg font-semibold text-ink mb-4">编辑作品信息</h2>
@@ -266,6 +266,13 @@ const save = () => {
 </script>
 
 <style scoped>
+.edit-dialog-card {
+  background: rgba(30, 30, 30, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .edit-dropdown-wrapper {
   position: relative;
 }
@@ -278,10 +285,10 @@ const save = () => {
   z-index: 10;
   margin-top: 2px;
   padding: 4px 0;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-card);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   list-style: none;
   max-height: 180px;
   overflow-y: auto;
@@ -290,27 +297,27 @@ const save = () => {
 .edit-dropdown-item {
   padding: 8px 14px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-ink);
   cursor: pointer;
   transition: background 0.1s ease;
 }
 
 .edit-dropdown-item:hover {
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .tag-btn {
   padding: 4px 8px;
   font-size: 12px;
   border-radius: 6px;
-  border: 1px solid #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
-  color: #6b7280;
+  color: var(--color-mute);
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .tag-btn:hover:not(:disabled) {
   border-color: #ffb366;
-  color: #111827;
+  color: var(--color-ink);
 }
 </style>

@@ -1,8 +1,8 @@
 <template>
   <div class="carousel-container" v-if="artworks.length > 0">
     <div class="carousel-header">
-      <h3 class="carousel-author-name">{{ authorName }}</h3>
-      <p class="carousel-author-pinyin">{{ authorPinyin }}</p>
+      <h3 class="carousel-author-name">{{ authorName }}<span v-if="subtitle" class="carousel-subtitle-sep"> • </span><span v-if="subtitle" class="carousel-subtitle">{{ subtitle }}</span></h3>
+      <p class="carousel-author-pinyin">{{ authorPinyin }}<span v-if="subtitlePinyin" class="carousel-subtitle-sep"> • </span><span v-if="subtitlePinyin" class="carousel-subtitle-pinyin">{{ subtitlePinyin }}</span></p>
     </div>
 
     <div v-if="artworks.length < 3" class="static-row">
@@ -60,6 +60,8 @@ import type { ArtworkItem } from '../stores/gallery'
 interface Props {
   authorName: string
   authorPinyin: string
+  subtitle?: string
+  subtitlePinyin?: string
   artworks: ArtworkItem[]
 }
 const props = defineProps<Props>()
@@ -372,12 +374,25 @@ onBeforeUnmount(() => {
   margin: 0 0 6px;
   letter-spacing: -0.5px;
 }
+.carousel-subtitle-sep {
+  font-weight: 400;
+  opacity: 0.5;
+}
+.carousel-subtitle {
+  font-weight: 400;
+  font-size: 18px;
+  opacity: 0.7;
+}
 .carousel-author-pinyin {
   font-size: 12px;
   font-weight: 500;
   color: var(--color-ash);
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+.carousel-subtitle-pinyin {
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .static-row {
@@ -452,19 +467,19 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   border: none;
   padding: 0;
-  background: #d1d5db;
+  background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: background 0.3s ease, transform 0.3s ease;
 }
 .carousel-dot.active {
-  background: var(--color-ink, #111827);
+  background: var(--color-ink, #ffffff);
   transform: scale(1.4);
 }
 .carousel-dot:hover {
-  background: #9ca3af;
+  background: rgba(255, 255, 255, 0.5);
 }
 .carousel-dot.active:hover {
-  background: var(--color-ink, #111827);
+  background: var(--color-ink, #ffffff);
 }
 
 @media (max-width: 768px) {

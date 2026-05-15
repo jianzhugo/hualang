@@ -9,7 +9,7 @@
       />
       <div class="hero-overlay"></div>
       <div class="hero-content">
-        <h1 class="hero-title">小  小  艺  境</h1>
+        <h1 class="hero-title gradient-text">小  小  艺  境</h1>
         <p class="hero-subtitle">小小的手，画出大大的世界；每一笔都是成长的足迹</p>
         <router-link to="/gallery" class="btn-primary text-lg px-8 h-12">
           浏览画廊
@@ -58,6 +58,8 @@
           :key="authorData.name"
           :author-name="authorData.name"
           :author-pinyin="authorData.pinyin"
+          :subtitle="authorData.subtitle"
+          :subtitle-pinyin="authorData.subtitlePinyin"
           :artworks="authorData.artworks"
         />
       </div>
@@ -85,6 +87,16 @@ const AUTHOR_AVATARS: Record<string, string> = {
 const AUTHOR_PINYIN: Record<string, string> = {
   '馨馨': 'XIN XIN',
   '松宝': 'SONG BAO'
+}
+
+const AUTHOR_SUBTITLE: Record<string, string> = {
+  '馨馨': '近期佳作',
+  '松宝': '近期佳作'
+}
+
+const AUTHOR_SUBTITLE_PINYIN: Record<string, string> = {
+  '馨馨': 'JIN QI JIA ZUO',
+  '松宝': 'JIN QI JIA ZUO'
 }
 
 const getAuthorAvatar = (author: string): string => {
@@ -145,6 +157,8 @@ const carouselAuthors = computed(() => {
     return {
       name,
       pinyin: AUTHOR_PINYIN[name] || name.toUpperCase(),
+      subtitle: AUTHOR_SUBTITLE[name] || '',
+      subtitlePinyin: AUTHOR_SUBTITLE_PINYIN[name] || '',
       artworks: topArtworks,
       isReversed: name === '松宝'
     }
@@ -153,6 +167,21 @@ const carouselAuthors = computed(() => {
 </script>
 
 <style scoped>
+.gradient-text {
+  background: linear-gradient(135deg, #ffb366, #66b3e6, #ffb366);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 4s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
 .hero-bg-media {
   position: absolute;
   inset: 0;
@@ -164,11 +193,12 @@ const carouselAuthors = computed(() => {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(248, 250, 252, 0.4) 0%,
-    rgba(248, 250, 252, 0.15) 30%,
-    transparent 50%,
-    rgba(248, 250, 252, 0.15) 70%,
-    rgba(248, 250, 252, 0.4) 100%
+    rgba(18, 18, 18, 0.3) 0%,
+    transparent 30%,
+    transparent 40%,
+    rgba(18, 18, 18, 0.6) 70%,
+    rgba(18, 18, 18, 0.95) 90%,
+    rgba(18, 18, 18, 1) 100%
   );
   pointer-events: none;
   z-index: 2;
@@ -204,17 +234,17 @@ const carouselAuthors = computed(() => {
 }
 
 .artwork-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  background: #ffffff;
+  background: var(--color-surface-card);
 }
 
 .artwork-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .card-image-wrap {
@@ -229,6 +259,7 @@ const carouselAuthors = computed(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+  border-radius: 16px;
   transition: transform 0.3s ease;
 }
 
@@ -239,12 +270,12 @@ const carouselAuthors = computed(() => {
 .card-placeholder {
   width: 100%;
   height: 100%;
-  background-color: #f3f4f6;
+  background-color: var(--color-surface-soft);
 }
 
 .card-info {
   padding: 12px 16px;
-  background: #ffffff;
+  background: var(--color-surface-card);
 }
 
 .card-title {
@@ -297,7 +328,7 @@ const carouselAuthors = computed(() => {
   margin: 0;
   display: inline-block;
   padding: 12px 36px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 20px;
@@ -352,7 +383,7 @@ const carouselAuthors = computed(() => {
     gap: 12px;
     padding-bottom: 8px;
     scrollbar-width: thin;
-    scrollbar-color: #ff6b8a #f1f1f1;
+    scrollbar-color: #ff6b8a rgba(255, 255, 255, 0.1);
   }
 
   .cards-grid::-webkit-scrollbar {
@@ -360,7 +391,7 @@ const carouselAuthors = computed(() => {
   }
 
   .cards-grid::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
   }
 

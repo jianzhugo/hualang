@@ -1,10 +1,10 @@
 <template>
   <div class="gallery-page">
     <section class="gallery-hero">
-      <div class="gallery-hero-bg" />
+      <SphereCarousel class="gallery-hero-bg" :images="sphereImages" />
       <div class="gallery-hero-overlay" />
       <div class="gallery-hero-content">
-        <h1 class="gallery-hero-title">稚笔生花</h1>
+        <h1 class="gallery-hero-title gradient-text">稚 笔 生 花</h1>
         <p class="gallery-hero-subtitle">小小的手，画出大大的世界</p>
       </div>
     </section>
@@ -163,10 +163,15 @@ import SortDropdown from '../components/SortDropdown.vue'
 import FilterButton from '../components/FilterButton.vue'
 import FilterPanel from '../components/FilterPanel.vue'
 import { ChevronDown } from 'lucide-vue-next'
+import SphereCarousel from '../components/SphereCarousel.vue'
 
 const maxVisibleTags = ref(99)
 
 const galleryStore = useGalleryStore()
+
+const sphereImages = computed(() =>
+  galleryStore.artworks.map(a => a.url).filter((u): u is string => !!u)
+)
 const sortOrder = ref('uploadDate-desc')
 const uploadDateStart = ref('')
 const uploadDateEnd = ref('')
@@ -448,3 +453,20 @@ onUnmounted(() => {
   resizeObserver = null
 })
 </script>
+
+<style scoped>
+.gradient-text {
+  background: linear-gradient(135deg, #ffb366, #66b3e6, #ffb366);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 4s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+</style>

@@ -1,22 +1,49 @@
 <template>
   <main class="upload-page">
-    <ul class="bg-bubbles" aria-hidden="true">
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-      <li></li>
-    </ul>
+    <SphereCarousel
+      :images="imageUrls"
+      bg-color="#121212"
+      :sphere-radius="30"
+      :card-w="3.6"
+      :card-h="2.5"
+      :grid-gap="2.2"
+      :depth-range="4"
+      :auto-rotate-speed="0.0001"
+      :sphere-spacing="120"
+      :sphere-count="5"
+      :drag-sensitivity="0.003"
+      :drag-smoothing="0.3"
+      :friction="0.95"
+      :fade-in-duration="4"
+      :cam-z="45.7"
+      :init-rot-x="0.078"
+      :fov="50"
+      :facing-multiplier="0.5"
+      :facing-offset="0.4"
+      :overlay-opacity="0.4"
+      :breath-min-speed="0.3"
+      :breath-speed-range="0.3"
+      :breath-min-amp="0.05"
+      :breath-amp-range="0.08"
+      :card-corner-radius="24"
+      :max-rot-x="0.6"
+      :vignette-radius="0"
+      :vignette-softness="0.46"
+      :vignette-intensity="1.0"
+      :grain-intensity="0.13"
+      :dist-fade-mult="1.3"
+      :back-min-outside="0"
+      :back-min-inside="0.55"
+      :mouse-parallax="0"
+      class="upload-sphere-bg"
+    />
+
+    <div class="upload-sphere-overlay"></div>
 
     <!-- 密码验证 -->
     <div v-if="!uploadStore.isAuthenticated" class="upload-hero">
       <div class="upload-header">
-        <h1 class="upload-title">稚笔生花</h1>
+        <h1 class="upload-title">稚 笔 生 花</h1>
         <p class="upload-subtitle">小小的手，画出大大的世界</p>
       </div>
       <div class="form-container">
@@ -263,6 +290,7 @@ import { X, Lock } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
 import { compressImage } from '../composables/useImageCompress'
+import SphereCarousel from '../components/SphereCarousel.vue'
 
 const uploadStore = useUploadStore()
 const galleryStore = useGalleryStore()
@@ -275,6 +303,12 @@ const tagInput = ref('')
 const tagsExpanded = ref(false)
 const showUploaderDropdown = ref(false)
 const showAuthorDropdown = ref(false)
+
+const imageUrls = computed(() => {
+  return galleryStore.artworks
+    .filter(a => a.url)
+    .map(a => a.url!)
+})
 
 const existingAuthors = computed(() => {
   const authors = [...new Set(galleryStore.artworks.map((a) => a.author))]
@@ -449,17 +483,44 @@ const formatStatus = (status: string): string => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: linear-gradient(to bottom right, #50a3a2 0%, #53e3a6 100%);
+  background: #121212;
+}
+
+.upload-sphere-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.upload-sphere-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  /* 球体背景遮罩：调整透明度控制球体可见程度 */
+  /* 0 = 完全透明(球体最清晰), 1 = 完全不透明(球体不可见) */
+  background: radial-gradient(
+    ellipse at center,
+    rgba(18, 18, 18, 0.1) 0%,
+    rgba(18, 18, 18, 0.4) 50%,
+    rgba(18, 18, 18, 0.8) 100%
+  );
 }
 
 .upload-hero {
   position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
   padding: 0 var(--spacing-lg);
+  pointer-events: none;
+}
+
+.upload-hero .form-container {
+  pointer-events: auto;
 }
 
 .upload-header {
@@ -476,8 +537,19 @@ const formatStatus = (status: string): string => {
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -1.5px;
-  color: var(--color-ink);
   margin-bottom: 0.25rem;
+  background: linear-gradient(135deg, #ffb366, #66b3e6, #ffb366);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 4s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @media (min-width: 768px) {
@@ -496,7 +568,7 @@ const formatStatus = (status: string): string => {
   font-size: 16px;
   font-weight: 400;
   line-height: 1.5;
-  color: var(--color-mute);
+  color: #adb7be;
 }
 
 @media (min-width: 768px) {
@@ -518,7 +590,7 @@ const formatStatus = (status: string): string => {
   padding: 24px;
   border-radius: 12px;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -567,13 +639,18 @@ const formatStatus = (status: string): string => {
 
 .upload-form-wrapper {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   padding: 80px var(--spacing-lg) 48px;
   overflow-y: auto;
+  pointer-events: none;
+}
+
+.upload-form-wrapper .upload-form-card {
+  pointer-events: auto;
 }
 
 .dropdown-wrapper {
@@ -588,10 +665,10 @@ const formatStatus = (status: string): string => {
   z-index: 10;
   margin-top: 2px;
   padding: 4px 0;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--color-surface-card);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   list-style: none;
   max-height: 180px;
   overflow-y: auto;
@@ -600,18 +677,18 @@ const formatStatus = (status: string): string => {
 .dropdown-item {
   padding: 8px 14px;
   font-size: 14px;
-  color: #374151;
+  color: var(--color-ink);
   cursor: pointer;
   transition: background 0.1s ease;
 }
 
 .dropdown-item:hover {
-  background: #f3f4f6;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .upload-form-card :deep(.text-input) {
   background: transparent !important;
-  border: 1px solid #9ca3af !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   transition: border-color 0.15s ease;
 }
 
@@ -622,17 +699,17 @@ const formatStatus = (status: string): string => {
 }
 
 .upload-form-card :deep(.border-hairline) {
-  border-color: #9ca3af !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
   transition: border-color 0.15s ease;
 }
 
 .upload-form-card :deep(.border-dashed.border-hairline) {
-  border-color: #6b7280 !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 .upload-form-card :deep(.btn-secondary) {
   background: transparent !important;
-  border: 1px solid #9ca3af !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   transition: border-color 0.15s ease;
 }
 
@@ -644,128 +721,14 @@ const formatStatus = (status: string): string => {
   padding: 4px 8px;
   font-size: 12px;
   border-radius: 6px;
-  border: 1px solid #9ca3af;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   background: transparent;
-  color: #6b7280;
+  color: var(--color-mute);
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
 .tag-btn:hover:not(:disabled) {
   border-color: #ffb366;
-  color: #111827;
-}
-
-.bg-bubbles {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  overflow: hidden;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.bg-bubbles li {
-  position: absolute;
-  display: block;
-  width: 40px;
-  height: 40px;
-  background-color: rgba(255, 255, 255, 0.15);
-  bottom: -160px;
-  animation: square 25s infinite;
-  transition-timing-function: linear;
-}
-
-.bg-bubbles li:nth-child(1) {
-  left: 10%;
-}
-
-.bg-bubbles li:nth-child(2) {
-  left: 20%;
-  width: 80px;
-  height: 80px;
-  animation-delay: 2s;
-  animation-duration: 17s;
-}
-
-.bg-bubbles li:nth-child(3) {
-  left: 25%;
-  animation-delay: 4s;
-}
-
-.bg-bubbles li:nth-child(4) {
-  left: 40%;
-  width: 60px;
-  height: 60px;
-  animation-duration: 22s;
-  background-color: rgba(255, 255, 255, 0.25);
-}
-
-.bg-bubbles li:nth-child(5) {
-  left: 70%;
-}
-
-.bg-bubbles li:nth-child(6) {
-  left: 80%;
-  width: 120px;
-  height: 120px;
-  animation-delay: 3s;
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.bg-bubbles li:nth-child(7) {
-  left: 32%;
-  width: 160px;
-  height: 160px;
-  animation-delay: 7s;
-}
-
-.bg-bubbles li:nth-child(8) {
-  left: 55%;
-  width: 20px;
-  height: 20px;
-  animation-delay: 15s;
-  animation-duration: 40s;
-}
-
-.bg-bubbles li:nth-child(9) {
-  left: 25%;
-  width: 10px;
-  height: 10px;
-  animation-delay: 2s;
-  animation-duration: 40s;
-  background-color: rgba(255, 255, 255, 0.3);
-}
-
-.bg-bubbles li:nth-child(10) {
-  left: 90%;
-  width: 160px;
-  height: 160px;
-  animation-delay: 11s;
-}
-
-@keyframes square {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-100vh) rotate(600deg);
-  }
-}
-
-@media (max-width: 768px) {
-  .bg-bubbles li:nth-child(7),
-  .bg-bubbles li:nth-child(10) {
-    width: 100px;
-    height: 100px;
-  }
-
-  .bg-bubbles li:nth-child(6) {
-    width: 80px;
-    height: 80px;
-  }
+  color: var(--color-ink);
 }
 </style>

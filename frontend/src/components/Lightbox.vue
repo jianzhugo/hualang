@@ -6,11 +6,11 @@
       @click="handleBackdropClick"
     >
       <!-- Scrim -->
-      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="absolute inset-0 bg-black/70"></div>
 
       <!-- 关闭按钮 -->
       <button
-        class="btn-icon-circular absolute top-4 right-4 z-10 bg-white/90 hover:bg-white"
+        class="btn-icon-circular absolute top-4 right-4 z-10 bg-white/10 hover:bg-white/20"
         @click="close"
         aria-label="关闭"
       >
@@ -19,7 +19,7 @@
 
       <!-- 编辑按钮 -->
       <button
-        class="btn-icon-circular absolute top-4 right-16 z-10 bg-white/90 hover:bg-white"
+        class="btn-icon-circular absolute top-4 right-16 z-10 bg-white/10 hover:bg-white/20"
         @click.stop="$emit('edit', currentArtwork)"
         aria-label="编辑"
       >
@@ -29,7 +29,7 @@
       <!-- 左箭头 -->
       <button
         v-if="hasPrev"
-        class="btn-icon-circular absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white"
+        class="btn-icon-circular absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/10 hover:bg-white/20"
         @click.stop="prev"
         aria-label="上一张"
       >
@@ -39,7 +39,7 @@
       <!-- 右箭头 -->
       <button
         v-if="hasNext"
-        class="btn-icon-circular absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white"
+        class="btn-icon-circular absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/10 hover:bg-white/20"
         @click.stop="next"
         aria-label="下一张"
       >
