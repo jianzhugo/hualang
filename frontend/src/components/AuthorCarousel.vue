@@ -22,17 +22,18 @@
       @mousedown="onPointerDown"
       @mousemove="onPointerMove"
       @mouseup="onPointerUp"
-      @mouseleave="onPointerUp"
+      @mouseleave="onPointerCancel"
       @touchstart.prevent="onPointerDown"
       @touchmove.prevent="onPointerMove"
       @touchend="onPointerUp"
     >
-      <div class="carousel-stage">
+      <div class="carousel-stage" :style="stageStyle">
         <div
           v-for="(item, idx) in artworks"
           :key="item.key"
           class="carousel-card"
-          :style="getSlideStyle(idx)"
+          :class="{ 'carousel-card-dragging': isDragging }"
+          :style="{ width: cardWidthPx + 'px', ...getSlideStyle(idx) }"
         >
           <img :src="item.url" :alt="item.title" loading="lazy" draggable="false" />
         </div>
@@ -44,7 +45,7 @@
         v-for="(_, i) in artworks.length"
         :key="i"
         class="carousel-dot"
-        :class="{ active: i === activeIndex % artworks.length }"
+        :class="{ active: i === currentDotIndex }"
         :aria-label="`第 ${i + 1} 张`"
         @click="goTo(i)"
       />
@@ -68,25 +69,59 @@ const containerWidth = ref(0)
 
 const isMobile = computed(() => containerWidth.value > 0 && containerWidth.value < 768)
 
+const visibleCount = computed(() => isMobile.value ? 3 : 5)
+
 const cardWidthPx = computed(() => {
+  const w = containerWidth.value
+  if (w <= 0) return 200
+
   if (isMobile.value) {
-    return Math.min(containerWidth.value * 0.55, 280)
+    return w * 0.52
   }
-  return Math.min(containerWidth.value * 0.2, 340)
+
+  const count = visibleCount.value
+  const gapRatio = 0.025
+  const totalGapRatio = gapRatio * (count - 1)
+  const cardRatio = (1 - totalGapRatio) / count
+  return w * cardRatio
 })
 
-const offsetNearPx = computed(() => {
-  const cw = cardWidthPx.value
-  return cw * 0.65
+const gapPx = computed(() => {
+  const w = containerWidth.value
+  if (w <= 0) return 16
+  if (isMobile.value) {
+    return w * 0.02
+  }
+  return w * 0.025
 })
 
-const offsetFarPx = computed(() => {
+const stepPx = computed(() => cardWidthPx.value + gapPx.value)
+
+const mobileNearOffset = computed(() => {
   const cw = cardWidthPx.value
-  return cw * 1.2
+  return cw * 0.55
 })
+
+const mobileFarOffset = computed(() => {
+  const cw = cardWidthPx.value
+  return cw * 1.0
+})
+
+const stageStyle = computed(() => ({
+  height: `clamp(280px, 42vh, 520px)`,
+}))
 
 const total = computed(() => props.artworks.length)
 const activeIndex = ref(0)
+const dragFraction = ref(0)
+
+const visualIndex = computed(() => activeIndex.value + dragFraction.value)
+
+const currentDotIndex = computed(() => {
+  const n = total.value
+  if (n === 0) return 0
+  return ((Math.round(visualIndex.value) % n) + n) % n
+})
 
 function normalizeIndex(idx: number): number {
   const n = total.value
@@ -94,50 +129,78 @@ function normalizeIndex(idx: number): number {
   return ((idx % n) + n) % n
 }
 
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t
+}
+
 function getSlideStyle(index: number): Record<string, string> {
   const n = total.value
   if (n === 0) return { display: 'none' }
 
-  let diff = index - activeIndex.value
+  let diff = index - visualIndex.value
   if (diff > n / 2) diff -= n
   if (diff < -n / 2) diff += n
 
   const absDiff = Math.abs(diff)
+  const halfVisible = visibleCount.value / 2
 
-  if (absDiff > 2) {
+  if (absDiff > halfVisible + 0.5) {
     const side = diff > 0 ? 1 : -1
     return {
       opacity: '0',
-      transform: `translateX(${side * offsetFarPx.value}px) scale(0.65)`,
+      transform: `translateX(${side * (halfVisible * stepPx.value)}px) scale(0.6)`,
       pointerEvents: 'none',
       zIndex: '0',
       visibility: 'hidden',
     }
   }
 
+  const step = stepPx.value
+  const cw = cardWidthPx.value
+
   let translateX: number
   let scale: number
   let opacity: number
 
-  if (absDiff === 0) {
-    translateX = 0
-    scale = 1
-    opacity = 1
-  } else if (absDiff === 1) {
-    translateX = diff > 0 ? offsetNearPx.value : -offsetNearPx.value
-    scale = 0.8
-    opacity = 0.85
+  if (isMobile.value) {
+    const near = mobileNearOffset.value
+    const far = mobileFarOffset.value
+
+    if (absDiff <= 0.5) {
+      const t = absDiff / 0.5
+      translateX = diff > 0 ? lerp(0, near, t) : lerp(0, -near, t)
+      scale = lerp(1, 0.78, t)
+      opacity = lerp(1, 0.85, t)
+    } else if (absDiff <= 1.5) {
+      const t = (absDiff - 0.5) / 1
+      const fromX = diff > 0 ? near : -near
+      const toX = diff > 0 ? far : -far
+      translateX = lerp(fromX, toX, t)
+      scale = lerp(0.78, 0.6, t)
+      opacity = lerp(0.85, 0.5, t)
+    } else {
+      const t = Math.min((absDiff - 1.5) / 1, 1)
+      const fromX = diff > 0 ? far : -far
+      const toX = diff > 0 ? far * 1.3 : -far * 1.3
+      translateX = lerp(fromX, toX, t)
+      scale = lerp(0.6, 0.5, t)
+      opacity = lerp(0.5, 0.2, t)
+    }
   } else {
-    translateX = diff > 0 ? offsetFarPx.value : -offsetFarPx.value
-    scale = 0.7
-    opacity = 0.6
+    translateX = diff * step
+    const maxDist = halfVisible
+    const distRatio = Math.min(absDiff / maxDist, 1)
+    scale = lerp(1, 0.7, distRatio)
+    opacity = lerp(1, 0.5, distRatio)
   }
+
+  const z = Math.max(1, Math.round(10 - absDiff * 3))
 
   return {
     opacity: String(opacity),
     transform: `translateX(${translateX}px) scale(${scale})`,
-    zIndex: String(10 - absDiff),
-    pointerEvents: absDiff === 0 ? 'auto' : 'none',
+    zIndex: String(z),
+    pointerEvents: absDiff < 0.5 ? 'auto' : 'none',
     visibility: 'visible',
   }
 }
@@ -145,7 +208,7 @@ function getSlideStyle(index: number): Record<string, string> {
 // ---- 自动播放 ----
 const AUTOPLAY_MS = 3000
 let autoplayTimer: ReturnType<typeof setTimeout> | null = null
-let isPlaying = ref(true)
+const isPlaying = ref(true)
 
 function scheduleNext() {
   clearAutoplay()
@@ -173,9 +236,9 @@ function goTo(idx: number) {
 // ---- 拖拽 ----
 const isDragging = ref(false)
 let dragStartX = 0
-let dragStartIndex = 0
 let dragDelta = 0
 let hasMoved = false
+let rafId = 0
 
 function getClientX(e: MouseEvent | TouchEvent): number {
   if ('touches' in e) return e.touches[0].clientX
@@ -186,8 +249,8 @@ function onPointerDown(e: MouseEvent | TouchEvent) {
   isDragging.value = true
   hasMoved = false
   dragStartX = getClientX(e)
-  dragStartIndex = activeIndex.value
   dragDelta = 0
+  dragFraction.value = 0
   clearAutoplay()
   if (viewportRef.value) viewportRef.value.style.cursor = 'grabbing'
 }
@@ -197,22 +260,39 @@ function onPointerMove(e: MouseEvent | TouchEvent) {
   const x = getClientX(e)
   dragDelta = x - dragStartX
   if (Math.abs(dragDelta) > 5) hasMoved = true
+
+  cancelAnimationFrame(rafId)
+  rafId = requestAnimationFrame(() => {
+    const pxPerSlide = isMobile.value ? mobileNearOffset.value : stepPx.value
+    dragFraction.value = -dragDelta / pxPerSlide
+  })
 }
 
 function onPointerUp() {
   if (!isDragging.value) return
   isDragging.value = false
+  cancelAnimationFrame(rafId)
   if (viewportRef.value) viewportRef.value.style.cursor = 'grab'
 
   if (hasMoved) {
-    const threshold = cardWidthPx.value * 0.2
-    if (dragDelta < -threshold) {
-      activeIndex.value = normalizeIndex(activeIndex.value + 1)
-    } else if (dragDelta > threshold) {
-      activeIndex.value = normalizeIndex(activeIndex.value - 1)
-    }
+    const rounded = Math.round(visualIndex.value)
+    const n = total.value
+    activeIndex.value = ((rounded % n) + n) % n
   }
 
+  dragFraction.value = 0
+  dragDelta = 0
+  hasMoved = false
+  isPlaying.value = true
+  scheduleNext()
+}
+
+function onPointerCancel() {
+  if (!isDragging.value) return
+  isDragging.value = false
+  cancelAnimationFrame(rafId)
+  if (viewportRef.value) viewportRef.value.style.cursor = 'grab'
+  dragFraction.value = 0
   dragDelta = 0
   hasMoved = false
   isPlaying.value = true
@@ -250,6 +330,7 @@ function teardownCarousel() {
   resizeObserver?.disconnect()
   resizeObserver = null
   clearAutoplay()
+  cancelAnimationFrame(rafId)
   carouselReady = false
 }
 
@@ -273,6 +354,9 @@ onBeforeUnmount(() => {
 <style scoped>
 .carousel-container {
   margin-bottom: 64px;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .carousel-container:last-child {
   margin-bottom: 0;
@@ -333,15 +417,18 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: clamp(280px, 42vh, 520px);
 }
 
 .carousel-card {
   position: absolute;
-  width: clamp(200px, 22vw, 340px);
-  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+  transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1),
+              opacity 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
   will-change: transform, opacity;
   transform-origin: center center;
+}
+
+.carousel-card-dragging {
+  transition: none;
 }
 
 .carousel-card img {
