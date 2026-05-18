@@ -128,6 +128,12 @@ async function handleImage(request: Request, env: Env, _origin: string, key: str
   }
 }
 
+function isR2ConditionalPutFailed(result: R2Object | null, expectedContent: string): boolean {
+  if (!result) return true
+  const expectedSize = new TextEncoder().encode(expectedContent).byteLength
+  return result.size !== expectedSize
+}
+
 async function handleRegister(request: Request, env: Env, origin: string): Promise<Response> {
   try {
     const body = await request.json()
@@ -136,7 +142,7 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
       return errorResponse(400, 'Missing required fields: key, uploader, author', env, origin)
     }
 
-    const maxRetries = 3
+    const maxRetries = 5
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existingObj = await env.GALLERY_BUCKET.get('metadata.json')
@@ -182,18 +188,24 @@ async function handleRegister(request: Request, env: Env, origin: string): Promi
       }
 
       try {
-        await env.GALLERY_BUCKET.put('metadata.json', JSON.stringify(metadata), putOptions)
-        return jsonResponse({ success: true }, env, 200, origin)
-      } catch (putError: unknown) {
-        const err = putError as { code?: string; message?: string }
-        if (attempt < maxRetries - 1 && (err.code === 'ConditionalCheckFailed' || err.message?.includes('etag'))) {
-          await new Promise(r => setTimeout(r, Math.random() * 1000))
-          continue
-        }
-        if (attempt === maxRetries - 1) {
+        const newContent = JSON.stringify(metadata)
+        const result = await env.GALLERY_BUCKET.put('metadata.json', newContent, putOptions)
+
+        if (isR2ConditionalPutFailed(result, newContent)) {
+          if (attempt < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+            continue
+          }
           return errorResponse(409, 'Metadata conflict, please try again', env, origin)
         }
-        throw putError
+
+        return jsonResponse({ success: true }, env, 200, origin)
+      } catch {
+        if (attempt < maxRetries - 1) {
+          await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+          continue
+        }
+        return errorResponse(409, 'Metadata conflict, please try again', env, origin)
       }
     }
 
@@ -213,7 +225,7 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
     }
 
     const body: { key: string; uploader?: string; author?: string; title?: string; createdDate?: string; tags?: string[] } = await request.json()
-    const maxRetries = 3
+    const maxRetries = 5
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existingObj = await env.GALLERY_BUCKET.get('metadata.json')
@@ -245,20 +257,26 @@ async function handleUpdate(request: Request, env: Env, origin: string): Promise
       if (body.tags !== undefined) metadata.artworks[idx].tags = body.tags
 
       try {
-        await env.GALLERY_BUCKET.put('metadata.json', JSON.stringify(metadata), {
+        const newContent = JSON.stringify(metadata)
+        const result = await env.GALLERY_BUCKET.put('metadata.json', newContent, {
           onlyIf: { etagMatches: etag }
         })
-        return jsonResponse({ success: true }, env, 200, origin)
-      } catch (putError: unknown) {
-        const err = putError as { code?: string; message?: string }
-        if (attempt < maxRetries - 1 && (err.code === 'ConditionalCheckFailed' || err.message?.includes('etag'))) {
-          await new Promise(r => setTimeout(r, Math.random() * 1000))
-          continue
-        }
-        if (attempt === maxRetries - 1) {
+
+        if (isR2ConditionalPutFailed(result, newContent)) {
+          if (attempt < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+            continue
+          }
           return errorResponse(409, 'Metadata conflict, please try again', env, origin)
         }
-        throw putError
+
+        return jsonResponse({ success: true }, env, 200, origin)
+      } catch {
+        if (attempt < maxRetries - 1) {
+          await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+          continue
+        }
+        return errorResponse(409, 'Metadata conflict, please try again', env, origin)
       }
     }
 
@@ -275,7 +293,7 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
   }
 
   try {
-    const maxRetries = 3
+    const maxRetries = 5
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existingObj = await env.GALLERY_BUCKET.get('metadata.json')
@@ -320,20 +338,26 @@ async function handleSync(request: Request, env: Env, origin: string): Promise<R
       }
 
       try {
-        await env.GALLERY_BUCKET.put('metadata.json', JSON.stringify(metadata), {
+        const newContent = JSON.stringify(metadata)
+        const result = await env.GALLERY_BUCKET.put('metadata.json', newContent, {
           onlyIf: { etagMatches: etag }
         })
-        return jsonResponse({ synced: unregistered.length }, env, 200, origin)
-      } catch (putError: unknown) {
-        const err = putError as { code?: string; message?: string }
-        if (attempt < maxRetries - 1 && (err.code === 'ConditionalCheckFailed' || err.message?.includes('etag'))) {
-          await new Promise(r => setTimeout(r, Math.random() * 1000))
-          continue
-        }
-        if (attempt === maxRetries - 1) {
+
+        if (isR2ConditionalPutFailed(result, newContent)) {
+          if (attempt < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+            continue
+          }
           return errorResponse(409, 'Metadata conflict, please try again', env, origin)
         }
-        throw putError
+
+        return jsonResponse({ synced: unregistered.length }, env, 200, origin)
+      } catch {
+        if (attempt < maxRetries - 1) {
+          await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+          continue
+        }
+        return errorResponse(409, 'Metadata conflict, please try again', env, origin)
       }
     }
 
@@ -357,7 +381,7 @@ async function handleDelete(request: Request, env: Env, origin: string): Promise
 
     await env.GALLERY_BUCKET.delete(body.key)
 
-    const maxRetries = 3
+    const maxRetries = 5
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       const existingObj = await env.GALLERY_BUCKET.get('metadata.json')
       if (!existingObj) {
@@ -384,20 +408,26 @@ async function handleDelete(request: Request, env: Env, origin: string): Promise
       metadata.artworks.splice(idx, 1)
 
       try {
-        await env.GALLERY_BUCKET.put('metadata.json', JSON.stringify(metadata), {
+        const newContent = JSON.stringify(metadata)
+        const result = await env.GALLERY_BUCKET.put('metadata.json', newContent, {
           onlyIf: { etagMatches: etag }
         })
-        return jsonResponse({ success: true }, env, 200, origin)
-      } catch (putError: unknown) {
-        const err = putError as { code?: string; message?: string }
-        if (attempt < maxRetries - 1 && (err.code === 'ConditionalCheckFailed' || err.message?.includes('etag'))) {
-          await new Promise(r => setTimeout(r, Math.random() * 1000))
-          continue
-        }
-        if (attempt === maxRetries - 1) {
+
+        if (isR2ConditionalPutFailed(result, newContent)) {
+          if (attempt < maxRetries - 1) {
+            await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+            continue
+          }
           return errorResponse(409, 'Metadata conflict, please try again', env, origin)
         }
-        throw putError
+
+        return jsonResponse({ success: true }, env, 200, origin)
+      } catch {
+        if (attempt < maxRetries - 1) {
+          await new Promise(r => setTimeout(r, Math.random() * 1000 + attempt * 500))
+          continue
+        }
+        return errorResponse(409, 'Metadata conflict, please try again', env, origin)
       }
     }
 

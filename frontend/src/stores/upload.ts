@@ -25,6 +25,8 @@ export const useUploadStore = defineStore('upload', () => {
   const uploadQueue = ref<UploadItem[]>([])
   const isUploading = ref(false)
 
+  let registerChain: Promise<void> = Promise.resolve()
+
   const checkAuth = () => {
     const stored = sessionStorage.getItem('gallery_auth')
     if (stored) {
@@ -87,7 +89,7 @@ export const useUploadStore = defineStore('upload', () => {
       
       updateItem(item.id, { status: 'registering', progress: 80 })
 
-      await registerArtwork({
+      const registerPayload = {
         key: tokenResult.key,
         uploader: item.uploader,
         author: selectedAuthor.value,
@@ -95,6 +97,18 @@ export const useUploadStore = defineStore('upload', () => {
         date: new Date().toISOString().split('T')[0],
         createdDate: createdDate.value || undefined,
         tags: selectedTags.value
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const nextInChain = registerChain.then(async () => {
+          try {
+            await registerArtwork(registerPayload)
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
+        })
+        registerChain = nextInChain.catch(() => {})
       })
 
       updateItem(item.id, { status: 'done', progress: 100 })
