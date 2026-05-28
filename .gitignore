@@ -27,6 +27,8 @@ Thumbs.db
 # Local env files
 .env.local
 .env.*.local
+.env.production
+.env.development
 
 # Trae docs
 .trae/

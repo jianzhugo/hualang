@@ -1,5 +1,6 @@
 <template>
   <main>
+    <canvas ref="speckleCanvas" class="page-speckles" aria-hidden="true"></canvas>
     <!-- Hero 区域 -->
     <section class="hero-section">
       <HeroBackground
@@ -68,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import HeroBackground from '../components/HeroBackground.vue'
@@ -113,12 +114,72 @@ const isMobile = ref(false)
 // 切换到视频：只需改成视频路径即可ref('/assets/your-video.mp4')
 const heroBackground = ref(heroBgImage)
 
+const speckleCanvas = ref<HTMLCanvasElement | null>(null)
+let speckleFrameId = 0
+
+interface Speckle {
+  x: number; y: number; r: number; a: number; speed: number; phase: number; gold: boolean
+}
+
+function initSpeckles() {
+  const canvas = speckleCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')!
+  if (!ctx) return
+
+  const dpr = Math.min(window.devicePixelRatio, 2)
+  const w = window.innerWidth
+  const h = window.innerHeight
+  canvas.width = w * dpr
+  canvas.height = h * dpr
+  ctx.scale(dpr, dpr)
+
+  const count = Math.floor(w * h / 2000)
+  const dots: Speckle[] = []
+  for (let i = 0; i < count; i++) {
+    dots.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      r: 0.4 + Math.random() * 1.8,
+      a: 0.12 + Math.random() * 0.5,
+      speed: 0.2 + Math.random() * 0.8,
+      phase: Math.random() * Math.PI * 2,
+      gold: Math.random() < 0.2
+    })
+  }
+
+  const start = performance.now() / 1000
+
+  function draw() {
+    const t = performance.now() / 1000 - start
+    ctx.clearRect(0, 0, w, h)
+    for (const d of dots) {
+      const alpha = d.a * (0.5 + 0.5 * Math.sin(t * d.speed + d.phase))
+      ctx.beginPath()
+      ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2)
+      if (d.gold) {
+        ctx.fillStyle = `rgba(255,210,100,${alpha})`
+      } else {
+        ctx.fillStyle = `rgba(255,255,255,${alpha})`
+      }
+      ctx.fill()
+    }
+    speckleFrameId = requestAnimationFrame(draw)
+  }
+  draw()
+}
+
 onMounted(() => {
   galleryStore.fetchGallery()
   isMobile.value = window.innerWidth < 768
   window.addEventListener('resize', () => {
     isMobile.value = window.innerWidth < 768
   })
+  initSpeckles()
+})
+
+onUnmounted(() => {
+  cancelAnimationFrame(speckleFrameId)
 })
 
 const authorArtworks = computed(() => {
@@ -186,6 +247,15 @@ const carouselAuthors = computed(() => {
   position: absolute;
   inset: 0;
   z-index: 1;
+}
+
+.page-speckles {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
 }
 
 .hero-overlay {
@@ -353,6 +423,7 @@ const carouselAuthors = computed(() => {
   animation: gradientFlow 3s ease infinite;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude;
   z-index: -1;
 }

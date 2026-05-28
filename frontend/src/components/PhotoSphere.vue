@@ -5,7 +5,6 @@
 </template>
 
 <script setup lang="ts">
-console.log('[PhotoSphere] === SCRIPT START EXECUTING ===')
 import { ref, onMounted, onBeforeUnmount, watch, type PropType } from 'vue'
 import * as THREE from 'three'
 import type { ArtworkItem } from '../stores/gallery'
@@ -43,7 +42,6 @@ const CARD_CONFIG = {
 
 const init = () => {
   if (!container.value || !canvasRef.value) {
-    console.error('[PhotoSphere] Container or canvas not found')
     return
   }
 
@@ -51,12 +49,9 @@ const init = () => {
   const height = container.value.clientHeight
 
   if (width === 0 || height === 0) {
-    console.warn('[PhotoSphere] Container has zero size, retrying...', { width, height })
     setTimeout(init, 100)
     return
   }
-
-  console.log('[PhotoSphere] Initializing with size:', { width, height })
 
   try {
     renderer = new THREE.WebGLRenderer({
@@ -64,26 +59,14 @@ const init = () => {
       alpha: true,
       antialias: true
     })
-  } catch (e) {
-    console.error('[PhotoSphere] WebGL creation failed:', e)
+  } catch {
     return
   }
   renderer.setSize(width, height)
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-  
-  if (canvasRef.value) {
-    canvasRef.value.style.position = 'absolute'
-    canvasRef.value.style.top = '0'
-    canvasRef.value.style.left = '0'
-    canvasRef.value.style.width = '100%'
-    canvasRef.value.style.height = '100%'
-    canvasRef.value.style.zIndex = '9999'
-    console.log('[PhotoSphere] Canvas styles forced, WebGL context:', renderer.getContext())
-    console.log('[PhotoSphere] Renderer info:', renderer.info)
-  }
-  
+
   renderer.shadowMap.enabled = false
-  renderer.setClearColor(0x0000ff, 1)  // 蓝色清除色，用于调试
+  renderer.setClearColor(0x000000, 0)
 
   scene = new THREE.Scene()
 
@@ -181,7 +164,6 @@ const loadTextures = () => {
 }
 
 const createFallbackCards = () => {
-  console.log('[PhotoSphere] Creating fallback cards...')
   cards.forEach((card) => {
     cardGroup.remove(card)
     card.geometry.dispose()
@@ -234,8 +216,6 @@ const createFallbackCards = () => {
     const normalizedDist = Math.min(distFromCenter / config.radius, 1)
     const opacity = 0.6 + (1 - normalizedDist) * 0.4
     material.opacity = opacity
-    
-    console.log(`[PhotoSphere] Card ${i}: pos=(${x.toFixed(1)}, ${y.toFixed(1)}, ${z.toFixed(1)}), op=${opacity.toFixed(2)}`)
 
     mesh.userData = {
       basePos: new THREE.Vector3(x, y, z),
@@ -263,7 +243,6 @@ const createFallbackCards = () => {
   }
 
   startAnimation()
-  console.log('[PhotoSphere] Fallback cards created:', cards.length)
 }
 
 const createCards = () => {
@@ -401,19 +380,6 @@ function roundedClip(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 }
 
 const startAnimation = () => {
-  console.log('[PhotoSphere] Starting animation with', cards.length, 'cards')
-  console.log('[PhotoSphere] cardGroup children count:', cardGroup.children.length)
-  
-  const testGeo = new THREE.PlaneGeometry(10, 10)
-  const testMat = new THREE.MeshBasicMaterial({ 
-    color: 0xff00ff,  // 紫色
-    side: THREE.DoubleSide
-  })
-  const testMesh = new THREE.Mesh(testGeo, testMat)
-  testMesh.position.set(0, 0, -5)
-  cardGroup.add(testMesh)  // 添加到 cardGroup 而不是 scene
-  console.log('[PhotoSphere] Added PURPLE TEST MESH to cardGroup at (0,0,-5)')
-  
   let lastTime = performance.now()
 
   const animate = () => {
@@ -456,10 +422,6 @@ const startAnimation = () => {
     })
 
     renderer.render(scene, camera)
-    
-    if (Math.floor(animTime * 2) % 10 === 0) {
-      console.log('[PhotoSphere] Render frame at time:', animTime.toFixed(2))
-    }
   }
   animate()
 }

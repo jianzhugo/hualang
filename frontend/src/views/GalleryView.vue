@@ -1,7 +1,8 @@
 <template>
   <div class="gallery-page">
     <section class="gallery-hero">
-      <SphereCarousel class="gallery-hero-bg" :images="sphereImages" />
+      <SphereCarousel v-if="!isMobile" class="gallery-hero-bg" :images="sphereImages" />
+      <div v-else class="gallery-hero-bg" />
       <div class="gallery-hero-overlay" />
       <div class="gallery-hero-content">
         <h1 class="gallery-hero-title gradient-text">稚 笔 生 花</h1>
@@ -168,6 +169,11 @@ import SphereCarousel from '../components/SphereCarousel.vue'
 const maxVisibleTags = ref(99)
 
 const galleryStore = useGalleryStore()
+
+const isMobile = ref(window.innerWidth < 768)
+const onResize = () => { isMobile.value = window.innerWidth < 768 }
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 const sphereImages = computed(() =>
   galleryStore.artworks.map(a => a.url).filter((u): u is string => !!u)
