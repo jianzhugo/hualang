@@ -1,6 +1,6 @@
 <template>
   <main class="upload-page">
-    <SphereCarousel
+    <SphereCarouselAsync
       :images="imageUrls"
       bg-color="#121212"
       :sphere-radius="30"
@@ -285,12 +285,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { X, Lock } from 'lucide-vue-next'
 import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
 import { compressImage } from '../composables/useImageCompress'
-import SphereCarousel from '../components/SphereCarousel.vue'
+const SphereCarouselAsync = defineAsyncComponent(() => import('../components/SphereCarousel.vue'))
 
 const uploadStore = useUploadStore()
 const galleryStore = useGalleryStore()

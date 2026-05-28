@@ -1,7 +1,7 @@
 <template>
   <div class="gallery-page">
     <section class="gallery-hero">
-      <SphereCarousel v-if="!isMobile" class="gallery-hero-bg" :images="sphereImages" />
+      <SphereCarouselAsync v-if="!isMobile" class="gallery-hero-bg" :images="sphereImages" />
       <div v-else class="gallery-hero-bg" />
       <div class="gallery-hero-overlay" />
       <div class="gallery-hero-content">
@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, onActivated, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onActivated, nextTick, watch, defineAsyncComponent } from 'vue'
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import MasonryGrid from '../components/MasonryGrid.vue'
@@ -164,7 +164,7 @@ import SortDropdown from '../components/SortDropdown.vue'
 import FilterButton from '../components/FilterButton.vue'
 import FilterPanel from '../components/FilterPanel.vue'
 import { ChevronDown } from 'lucide-vue-next'
-import SphereCarousel from '../components/SphereCarousel.vue'
+const SphereCarouselAsync = defineAsyncComponent(() => import('../components/SphereCarousel.vue'))
 
 const maxVisibleTags = ref(99)
 
