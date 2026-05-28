@@ -1,42 +1,43 @@
 <template>
   <main class="upload-page">
-    <SphereCarouselAsync
-      :images="imageUrls"
-      bg-color="#121212"
-      :sphere-radius="30"
-      :card-w="3.6"
-      :card-h="2.5"
-      :grid-gap="2.2"
-      :depth-range="4"
-      :auto-rotate-speed="0.0001"
-      :sphere-spacing="120"
-      :sphere-count="5"
-      :drag-sensitivity="0.003"
-      :drag-smoothing="0.3"
-      :friction="0.95"
-      :fade-in-duration="4"
-      :cam-z="45.7"
-      :init-rot-x="0.078"
-      :fov="50"
-      :facing-multiplier="0.5"
-      :facing-offset="0.4"
-      :overlay-opacity="0.4"
-      :breath-min-speed="0.3"
-      :breath-speed-range="0.3"
-      :breath-min-amp="0.05"
-      :breath-amp-range="0.08"
-      :card-corner-radius="24"
-      :max-rot-x="0.6"
-      :vignette-radius="0"
-      :vignette-softness="0.46"
-      :vignette-intensity="1.0"
-      :grain-intensity="0.13"
-      :dist-fade-mult="1.3"
-      :back-min-outside="0"
-      :back-min-inside="0.55"
-      :mouse-parallax="0"
-      class="upload-sphere-bg"
-    />
+    <div class="upload-sphere-bg">
+      <SphereCarouselAsync
+        :images="imageUrls"
+        bg-color="#121212"
+        :sphere-radius="30"
+        :card-w="3.6"
+        :card-h="2.5"
+        :grid-gap="2.2"
+        :depth-range="4"
+        :auto-rotate-speed="0.0001"
+        :sphere-spacing="120"
+        :sphere-count="5"
+        :drag-sensitivity="0.003"
+        :drag-smoothing="0.3"
+        :friction="0.95"
+        :fade-in-duration="4"
+        :cam-z="45.7"
+        :init-rot-x="0.078"
+        :fov="50"
+        :facing-multiplier="0.5"
+        :facing-offset="0.4"
+        :overlay-opacity="0.4"
+        :breath-min-speed="0.3"
+        :breath-speed-range="0.3"
+        :breath-min-amp="0.05"
+        :breath-amp-range="0.08"
+        :card-corner-radius="24"
+        :max-rot-x="0.6"
+        :vignette-radius="0"
+        :vignette-softness="0.46"
+        :vignette-intensity="1.0"
+        :grain-intensity="0.13"
+        :dist-fade-mult="1.3"
+        :back-min-outside="0"
+        :back-min-inside="0.55"
+        :mouse-parallax="0"
+      />
+    </div>
 
     <div class="upload-sphere-overlay"></div>
 
@@ -490,6 +491,11 @@ const formatStatus = (status: string): string => {
   position: fixed;
   inset: 0;
   z-index: 0;
+}
+
+.upload-sphere-bg :deep(.sphere-carousel) {
+  position: absolute;
+  inset: 0;
 }
 
 .upload-sphere-overlay {

@@ -1,7 +1,9 @@
 <template>
   <div class="gallery-page">
     <section class="gallery-hero">
-      <SphereCarouselAsync v-if="!isMobile" class="gallery-hero-bg" :images="sphereImages" />
+      <div v-if="!isMobile" class="gallery-hero-bg">
+        <SphereCarouselAsync :images="sphereImages" />
+      </div>
       <div v-else class="gallery-hero-bg" />
       <div class="gallery-hero-overlay" />
       <div class="gallery-hero-content">
