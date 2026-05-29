@@ -479,7 +479,7 @@ const formatStatus = (status: string): string => {
 <style scoped>
 .upload-page {
   position: relative;
-  z-index: 1;
+  z-index: 10;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

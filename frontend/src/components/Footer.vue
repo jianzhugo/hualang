@@ -8,7 +8,10 @@
         <router-link to="/upload" class="hover:text-ink transition-colors">上传</router-link>
         <router-link to="/about" class="hover:text-ink transition-colors">关于</router-link>
       </div>
-      <p class="text-xs text-ash">&copy; {{ currentYear }} 未来之星</p>
+      <div class="flex flex-col items-center text-right">
+        <p class="text-xs text-ash">&copy; {{ currentYear }} 未来之星</p>
+        <p class="text-xs text-stone">made with ❤️ <a href="https://shuichanga.cn" target="_blank" rel="noopener noreferrer">水常</a></p>
+      </div>
     </div>
   </footer>
 </template>

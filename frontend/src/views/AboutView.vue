@@ -25,7 +25,10 @@
 
       <!-- 未来之星 -->
       <section class="mb-12 text-center">
-        <h2 class="text-heading-lg font-semibold text-ink mb-6">未来之星--小作者们</h2>
+        <div class="section-title-wrap">
+          <h2 class="text-heading-lg font-semibold text-ink mb-2">未来之星<span class="section-subtitle-sep"> • </span><span class="section-subtitle">小作者们</span></h2>
+          <p class="section-subtitle-en">Rising Stars</p>
+        </div>
         <div class="author-grid">
           <div
             v-for="item in authorList"
@@ -41,8 +44,8 @@
             <div v-else class="author-avatar-placeholder">
               {{ item.name.charAt(0) }}
             </div>
-            <p class="text-body-md font-semibold text-ink">{{ item.name }}</p>
-            <p v-if="item.pinyin" class="author-pinyin">{{ item.pinyin }}</p>
+            <p class="text-body-md font-semibold text-ink">{{ item.name }}<span v-if="item.pinyin" class="author-name-pinyin-sep"> • </span><span v-if="item.pinyin" class="author-name-pinyin">{{ item.pinyin }}</span></p>
+            <p v-if="item.bio" class="author-bio">{{ item.bio }}</p>
           </div>
         </div>
       </section>
@@ -53,31 +56,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useGalleryStore } from '../stores/gallery';
-import avatarXinxinNew from '../assets/TX-X.jpg';
-import avatarSongbaoNew from '../assets/TX-S.jpg';
-
-const AUTHOR_AVATARS: Record<string, string> = {
-  '馨馨': avatarXinxinNew,
-  '松宝': avatarSongbaoNew
-};
-const AUTHOR_PINYIN: Record<string, string> = {
-  '馨馨': 'XIN XIN',
-  '松宝': 'SONG BAO'
-};
+import { getAuthor } from '../composables/useAuthors';
 
 const galleryStore = useGalleryStore();
 
 const authorList = computed(() => {
   const seen = new Set<string>();
-  const result: { name: string; avatar: string; pinyin: string }[] = [];
+  const result: { name: string; avatar: string; pinyin: string; bio: string }[] = [];
   galleryStore.artworks.forEach((a) => {
     const name = a.author?.trim();
     if (name && !seen.has(name)) {
       seen.add(name);
+      const info = getAuthor(name);
       result.push({
         name,
-        avatar: AUTHOR_AVATARS[name] || '',
-        pinyin: AUTHOR_PINYIN[name] || ''
+        avatar: info?.avatar || '',
+        pinyin: info?.pinyin || '',
+        bio: info?.bio || ''
       });
     }
   });
@@ -234,6 +229,50 @@ onUnmounted(() => {
   letter-spacing: 2px;
   text-transform: uppercase;
   margin: 4px 0 0;
+}
+
+.section-title-wrap {
+  margin-bottom: 24px;
+}
+
+.section-subtitle-sep {
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.section-subtitle {
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.section-subtitle-en {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--color-ash);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 4px 0 0;
+}
+
+.author-name-pinyin-sep {
+  font-weight: 400;
+  opacity: 0.4;
+}
+
+.author-name-pinyin {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-mute);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.author-bio {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--color-stone);
+  line-height: 1.5;
+  margin: 8px 0 0;
 }
 
 :deep(.feature-card) {
