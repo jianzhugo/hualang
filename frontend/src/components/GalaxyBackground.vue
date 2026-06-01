@@ -165,12 +165,12 @@ function spawnMeteor() {
   meteors.push({
     x: Math.random() * w * 0.8 + w * 0.1,
     y: Math.random() * h * 0.3,
-    len: 30 + Math.random() * 55,
+    len: 60 + Math.random() * 100,
     angle: Math.PI / 4 + (Math.random() - 0.5) * 0.4,
-    speed: 3 + Math.random() * 4,
+    speed: 4 + Math.random() * 3,
     alpha: 1,
     life: 0,
-    maxLife: 45 + Math.random() * 30
+    maxLife: 80 + Math.random() * 50
   })
 }
 
@@ -224,15 +224,22 @@ function draw() {
     const tailY = m.y - Math.sin(m.angle) * m.len
     const grad = ctx.createLinearGradient(tailX, tailY, m.x, m.y)
     grad.addColorStop(0, 'rgba(255,255,255,0)')
-    grad.addColorStop(0.7, `rgba(220,235,255,${m.alpha * 0.5})`)
+    grad.addColorStop(0.6, `rgba(220,235,255,${m.alpha * 0.6})`)
     grad.addColorStop(1, `rgba(255,255,255,${m.alpha})`)
 
     ctx.beginPath()
     ctx.moveTo(tailX, tailY)
     ctx.lineTo(m.x, m.y)
     ctx.strokeStyle = grad
-    ctx.lineWidth = 1
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
     ctx.stroke()
+
+    const headGlow = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, 8)
+    headGlow.addColorStop(0, `rgba(255,255,255,${m.alpha * 0.5})`)
+    headGlow.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = headGlow
+    ctx.fillRect(m.x - 8, m.y - 8, 16, 16)
   }
 
   animId = requestAnimationFrame(draw)
@@ -248,6 +255,7 @@ function resize() {
   canvas.width = w * dpr
   canvas.height = h * dpr
   ctx = canvas.getContext('2d')!
+  ctx.scale(dpr, dpr)
   if (!nebulaCanvas) {
     nebulaCanvas = document.createElement('canvas')
   }

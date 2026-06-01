@@ -292,6 +292,7 @@ import { useUploadStore } from '../stores/upload'
 import { useGalleryStore } from '../stores/gallery'
 import { compressImage } from '../composables/useImageCompress'
 const SphereCarouselAsync = defineAsyncComponent(() => import('../components/SphereCarousel.vue'))
+defineOptions({ name: 'UploadView' })
 
 const uploadStore = useUploadStore()
 const galleryStore = useGalleryStore()

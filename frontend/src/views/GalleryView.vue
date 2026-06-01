@@ -1,5 +1,8 @@
 <template>
   <div class="gallery-page">
+    <div v-if="!isMobile" class="artwork-count-badge" :class="{ 'badge-above-footer': footerVisible }">
+      共有作品 <strong>{{ galleryStore.artworks.length }}</strong> 幅
+    </div>
     <section class="gallery-hero">
       <div v-if="!isMobile" class="gallery-hero-bg">
         <SphereCarouselAsync :images="sphereImages" />
@@ -155,6 +158,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, onActivated, nextTick, watch, defineAsyncComponent } from 'vue'
+defineOptions({ name: 'GalleryView' })
 import { useGalleryStore } from '../stores/gallery'
 import type { ArtworkItem } from '../stores/gallery'
 import MasonryGrid from '../components/MasonryGrid.vue'
@@ -173,9 +177,23 @@ const maxVisibleTags = ref(99)
 const galleryStore = useGalleryStore()
 
 const isMobile = ref(window.innerWidth < 768)
+const footerVisible = ref(false)
+let footerObserver: IntersectionObserver | null = null
 const onResize = () => { isMobile.value = window.innerWidth < 768 }
-onMounted(() => window.addEventListener('resize', onResize))
-onUnmounted(() => window.removeEventListener('resize', onResize))
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  const footer = document.querySelector('footer')
+  if (footer) {
+    footerObserver = new IntersectionObserver(([entry]) => {
+      footerVisible.value = entry.isIntersecting
+    }, { threshold: 0.1 })
+    footerObserver.observe(footer)
+  }
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
+  footerObserver?.disconnect()
+})
 
 const sphereImages = computed(() =>
   galleryStore.artworks.map(a => a.url).filter((u): u is string => !!u)
@@ -463,6 +481,44 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.artwork-count-badge {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.4s ease;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.artwork-count-badge strong {
+  font-weight: 600;
+  color: #ffb366;
+}
+
+.artwork-count-badge.badge-above-footer {
+  bottom: 100px;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-color: transparent;
+  color: var(--color-mute);
+}
+
+.artwork-count-badge.badge-above-footer strong {
+  color: #ffb366;
+}
+
 .gradient-text {
   background: linear-gradient(135deg, #ffb366, #66b3e6, #ffb366);
   background-size: 200% 200%;

@@ -4,7 +4,7 @@
     <NavBar />
     <div class="flex-1">
       <router-view v-slot="{ Component }">
-        <keep-alive :include="['GalleryView']">
+        <keep-alive :include="['GalleryView', 'UploadView']">
           <component :is="Component" />
         </keep-alive>
       </router-view>

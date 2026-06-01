@@ -6,7 +6,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, onActivated, onDeactivated, watch } from 'vue'
 import * as THREE from 'three'
 
 interface Props {
@@ -110,6 +110,7 @@ let paused = false
 
 const spheres: { group: THREE.Group; cards: THREE.Mesh[] }[] = []
 const textures: THREE.Texture[] = []
+const texCache = new Map<string, THREE.Texture>()
 let placeholderTex: THREE.CanvasTexture
 
 let drag = false
@@ -180,17 +181,25 @@ function makeTexture(img: HTMLImageElement | null): THREE.CanvasTexture {
 }
 
 function loadImages(urls: string[]) {
-  textures.length = 0
-  for (let i = 0; i < urls.length; i++) {
-    textures.push(placeholderTex)
+  const oldLen = textures.length
+  if (urls.length > oldLen) {
+    for (let i = oldLen; i < urls.length; i++) textures.push(placeholderTex)
+  } else if (urls.length < oldLen) {
+    textures.length = urls.length
   }
   urls.forEach((url, i) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => {
-      textures[i] = makeTexture(img)
+    if (texCache.has(url)) {
+      if (textures[i] !== texCache.get(url)!) textures[i] = texCache.get(url)!
+    } else {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const tex = makeTexture(img)
+        texCache.set(url, tex)
+        textures[i] = tex
+      }
+      img.src = url
     }
-    img.src = url
   })
 }
 
@@ -464,10 +473,11 @@ function onVisibilityChange() {
   }
 }
 
-watch(() => props.images, (urls) => {
+watch(() => props.images, (urls, oldUrls) => {
   if (urls.length > 0 && renderer) {
-    loadImages(urls)
-    buildSpheres()
+    if (!oldUrls || urls.length !== oldUrls.length || urls.some((u, i) => u !== oldUrls[i])) {
+      loadImages(urls)
+    }
   }
 })
 
@@ -483,6 +493,20 @@ onMounted(() => {
   window.addEventListener('touchend', onTouchEnd, { passive: true })
   window.addEventListener('resize', onResize)
   document.addEventListener('visibilitychange', onVisibilityChange)
+})
+
+onDeactivated(() => {
+  cancelAnimationFrame(animFrameId)
+  paused = true
+  pausedElapsed = performance.now() / 1000 - startTime
+})
+
+onActivated(() => {
+  if (renderer && paused) {
+    paused = false
+    startTime = performance.now() / 1000 - pausedElapsed
+    animate()
+  }
 })
 
 onUnmounted(() => {
@@ -506,6 +530,8 @@ onUnmounted(() => {
     renderer.dispose()
   }
   textures.forEach(t => t.dispose())
+  texCache.forEach(t => t.dispose())
+  texCache.clear()
   if (placeholderTex) placeholderTex.dispose()
   if (rt) rt.dispose()
   if (vignetteMat) vignetteMat.dispose()
